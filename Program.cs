@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddControllers();
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
@@ -21,14 +22,20 @@ builder.Services.AddAuthentication("Bearer")
 builder.Services.AddAuthorization();
 var app = builder.Build();
 
+app.UseMiddleware<RequestLoggingMiddleware>();
+app.UseExceptionHandler("/error");
+
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
 
-app.MapGet("/api/assessments/results", () =>
+app.MapGet("/api/assessments/results", () => Results.Ok(new
 {
-    return Results.Ok(new { message = "Protected data" });
-}).RequireAuthorization(); 
-
+   courseCode = "CS-101",
+   studentId="S-001",
+   letterGrade="A" 
+})).RequireAuthorization(); 
+app.MapControllers();
 app.Run();
+
