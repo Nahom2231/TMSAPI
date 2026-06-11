@@ -1,16 +1,15 @@
+using Microsoft.Extensions.DependencyInjection;
+
 
 
 public class EnrollmentWorker
 {
-    private readonly IEnrollmentService _enrollmentService;
+   
 
     private readonly IServiceScopeFactory _scopeFactory;
 
     // Constructor injecting the scoped service into this singleton
-    public EnrollmentWorker(IEnrollmentService enrollmentService)
-    {
-        _enrollmentService = enrollmentService;
-    }
+    
     public EnrollmentWorker(IServiceScopeFactory scopeFactory)
     {
         _scopeFactory = scopeFactory;
