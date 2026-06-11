@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-var builder = WebApplication.CreateBuilder(args);
 
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddSingleton<EnrollmentWorker>();
+builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddControllers();
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
@@ -19,6 +21,11 @@ builder.Services.AddAuthentication("Bearer")
         };
     });
 
+    builder.Host.UseDefaultServiceProvider(options=>{
+        options.ValidateScopes= true;
+        options.ValidateOnBuild=true;
+    });
+
 builder.Services.AddAuthorization();
 var app = builder.Build();
 
@@ -29,6 +36,12 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapGet("/api/enrollments/worker-smoke", (EnrollmentWorker worker) =>
+{
+    worker.ProcessBatch();
+    return Results.Ok("processed");
+});
+
 
 app.MapGet("/api/assessments/results", () => Results.Ok(new
 {
@@ -38,4 +51,7 @@ app.MapGet("/api/assessments/results", () => Results.Ok(new
 })).RequireAuthorization(); 
 app.MapControllers();
 app.Run();
+
+
+
 
