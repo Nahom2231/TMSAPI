@@ -1,7 +1,12 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using System.Text.Json;
+using TmsApi;
+
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
@@ -30,12 +35,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 
-app.MapGet("/api/assessments/results", () => Results.Ok(new
-{
-   courseCode = "CS-101",
-   studentId="S-001",
-   letterGrade="A" 
-})).RequireAuthorization(); 
 app.MapControllers();
 app.Run();
 
