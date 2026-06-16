@@ -4,7 +4,7 @@ using TmsApi;
 
 
 var builder = WebApplication.CreateBuilder(args);
-
+builder.Services.AddProblemDetails();
 builder.Services.AddControllers();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddAuthentication("Bearer")
@@ -28,8 +28,8 @@ builder.Services.AddAuthorization();
 var app = builder.Build();
 
 app.UseMiddleware<RequestLoggingMiddleware>();
-app.UseExceptionHandler("/error");
-
+app.UseExceptionHandler();
+app.UseStatusCodePages();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();

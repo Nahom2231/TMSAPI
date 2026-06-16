@@ -39,6 +39,11 @@ public class EnrollmentsController: ControllerBase
         var deleted= await _enrollmentService.DeleteAsync(id);
         return deleted? NoContent(): NotFound();
     }
+    [HttpGet("error")]
+    public IActionResult ThrowTestError()
+    {
+        throw new TmsDatabaseException("Simulated database failure for problemDetails testing");
+    }
     public record CreateEnrollmentRequest(string StudentId, string CourseCode);
 
 }

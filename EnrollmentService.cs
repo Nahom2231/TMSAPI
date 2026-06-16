@@ -41,3 +41,4 @@ public class EnrollmentService : IEnrollmentService
         return true;
     }
 }
+public class TmsDatabaseException(string message) : Exception(message);
