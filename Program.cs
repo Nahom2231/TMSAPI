@@ -1,11 +1,15 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+
 using System.Text.Json;
 using TmsApi;
-
+using Scalar.AspNetCore;
+using Microsoft.AspNetCore.Components.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+
 builder.Services.AddProblemDetails();
 builder.Services.AddControllers();
+builder.Services.AddOpenApi();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
@@ -25,10 +29,20 @@ builder.Services.AddAuthentication("Bearer")
     });
 
 builder.Services.AddAuthorization();
-var app = builder.Build();
 
+var app = builder.Build();
 app.UseMiddleware<RequestLoggingMiddleware>();
-app.UseExceptionHandler();
+if (app.Environment.IsDevelopment())
+{
+ app.MapOpenApi();   
+ app.MapScalarApiReference();
+}
+else
+{
+    app.UseExceptionHandler();
+}
+    
+
 app.UseStatusCodePages();
 app.UseRouting();
 app.UseAuthentication();
