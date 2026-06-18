@@ -4,6 +4,8 @@ using System.Text.Json;
 using TmsApi;
 using Scalar.AspNetCore;
 using Microsoft.AspNetCore.Components.Infrastructure;
+using Microsoft.EntityFrameworkCore;
+using TmsApi.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,7 +29,8 @@ builder.Services.AddAuthentication("Bearer")
 
         };
     });
-
+  builder.Services.AddDbContext<TmsDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
