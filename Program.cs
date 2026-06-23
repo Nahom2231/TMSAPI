@@ -58,7 +58,7 @@ app.MapControllers();
 using (var scope=app.Services.CreateScope())
 {
     var context=scope.ServiceProvider.GetRequiredService<TmsDbContext>();
-    context.Database.Migrate();
+    //context.Database.Migrate();
     if (!context.Students.Any())
     {
         var students = new List<Student>
