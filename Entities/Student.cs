@@ -12,5 +12,6 @@ public class Student
     public virtual ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
     public virtual ICollection<Certificate> Certificates {get; set; } = new List<Certificate>();
     
+    public uint Version { get; set; } 
 }
 

@@ -16,5 +16,27 @@ public class TmsDbContext (DbContextOptions<TmsDbContext> options) :DbContext(op
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(TmsDbContext).Assembly);
+
+        modelBuilder.Entity<Student>()
+        .Property<DateTime>("LastUpdated");
+
+        modelBuilder.Entity<Student>().Property(s=> s.Version)
+        .IsRowVersion();
+    }
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+
+    {
+        var entries = ChangeTracker.Entries()
+            .Where(e => e.State is EntityState.Added or EntityState.Modified);
+        foreach (var entry in entries)
+        {
+            if (entry.Entity is Student)
+            {
+                entry.Property("LastUpdated").CurrentValue = DateTime.UtcNow;
+            }
+        }
+
+        return base.SaveChangesAsync(cancellationToken);
     }
 }
+
