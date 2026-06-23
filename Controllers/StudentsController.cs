@@ -105,6 +105,19 @@ namespace TmsApi.Controllers
             }
             return Ok(report);
         }
-        
+        [HttpPost("archive-old-enrollments")]
+        public async Task<IActionResult> ArchiveEnrollments(CancellationToken cancellationToken)
+        {
+          var cutoffDate= DateTime.Now.AddYears(-2);
+
+          int rowsAffected= await _context.Enrollments
+          .Where(e => e.EnrolledAt < cutoffDate  && !e.IsArchived)
+          .ExecuteUpdateAsync(
+            s => s.SetProperty(e => e.IsArchived, true),
+            cancellationToken);
+            return Ok(new {Message = "Archiving complete" , RecordsUpdated = rowsAffected});
+            
+         }
     }
+
 }

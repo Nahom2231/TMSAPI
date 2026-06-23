@@ -8,6 +8,8 @@ public class Student
     public decimal GPA { get; set; }
 
     public bool IsActive { get; set; } = true;
+
+    public bool IsDeleted {get; set; }
  
     public virtual ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
     public virtual ICollection<Certificate> Certificates {get; set; } = new List<Certificate>();

@@ -22,6 +22,8 @@ public class TmsDbContext (DbContextOptions<TmsDbContext> options) :DbContext(op
 
         modelBuilder.Entity<Student>().Property(s=> s.Version)
         .IsRowVersion();
+        modelBuilder.Entity<Student>()
+        .HasQueryFilter(s => !s.IsDeleted);
     }
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
 
