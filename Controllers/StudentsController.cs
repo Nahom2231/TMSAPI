@@ -70,5 +70,40 @@ namespace TmsApi.Controllers
 
             return Ok(topCourses);
         }
+       [HttpGet("Exercise7a")]
+       public async Task<IActionResult> GetExercise7A(CancellationToken cancellationToken)
+        {
+            var students= await _context.Students.AsNoTracking().ToListAsync(cancellationToken);
+
+            foreach (var s in students)
+            {
+               var count = await _context.Enrollments
+               .AsNoTracking()
+               .CountAsync(e => e.StudentId == s.Id, cancellationToken); 
+               Console.WriteLine($"{s.Name}: {count} enrollments");
+            }
+            return Ok(students);
+        }
+
+        [HttpGet("Exercise7b")]
+
+        public async Task<IActionResult> GetExercise7B(CancellationToken cancellationToken)
+        {
+            var report= await _context.Students
+            .AsNoTracking()
+            .Select(s => new
+            {
+                StudentName = s.Name,
+                EnrollmentCount = s.Enrollments.Count
+            })
+            .OrderByDescending(s => s.EnrollmentCount)
+            .ToListAsync(cancellationToken);
+
+            foreach (var r in report)
+            {
+                Console.WriteLine($"{r.StudentName}: {r.EnrollmentCount} enrollments");
+            }
+            return Ok(report);
+        }
     }
 }
