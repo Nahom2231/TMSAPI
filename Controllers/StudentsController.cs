@@ -32,11 +32,11 @@ namespace TmsApi.Controllers
         [HttpGet("{id}")]
         public IActionResult GetStudentById(string id)
         {
-            if(id != "ST123")
+            if (id != "ST123")
             {
-                return NotFound(new { message = $"Student with ID {id} not found."});
+                return NotFound(new { message = $"Student with ID {id} not found." });
             }
-            var student = new {Id = "ST123", Name = "Kibru", Email = "kibru@gmail.com"};
+            var student = new { Id = "ST123", Name = "Kibru", Email = "kibru@gmail.com" };
             return Ok(student);
         }
 
@@ -70,26 +70,30 @@ namespace TmsApi.Controllers
 
             return Ok(topCourses);
         }
-       [HttpGet("Exercise7a")]
-       public async Task<IActionResult> GetExercise7A(CancellationToken cancellationToken)
+        [HttpGet("Exercise7a")]
+        public async Task<IActionResult> GetExercise7A(CancellationToken cancellationToken)
         {
-            var students= await _context.Students.AsNoTracking().ToListAsync(cancellationToken);
+            var students = await _context.Students.AsNoTracking().ToListAsync(cancellationToken);
 
             foreach (var s in students)
             {
-               var count = await _context.Enrollments
-               .AsNoTracking()
-               .CountAsync(e => e.StudentId == s.Id, cancellationToken); 
-               Console.WriteLine($"{s.Name}: {count} enrollments");
+                var count = await _context.Enrollments
+                .AsNoTracking()
+                .CountAsync(e => e.StudentId == s.Id, cancellationToken);
+                Console.WriteLine($"{s.Name}: {count} enrollments");
             }
-            return Ok(students);
+            return Ok(students.Select(s => new
+            {
+                StudentName = s.Name,
+                EnrollmentCount = s.Enrollments.Count
+            }));
         }
 
         [HttpGet("Exercise7b")]
 
         public async Task<IActionResult> GetExercise7B(CancellationToken cancellationToken)
         {
-            var report= await _context.Students
+            var report = await _context.Students
             .AsNoTracking()
             .Select(s => new
             {
@@ -108,16 +112,16 @@ namespace TmsApi.Controllers
         [HttpPost("archive-old-enrollments")]
         public async Task<IActionResult> ArchiveEnrollments(CancellationToken cancellationToken)
         {
-          var cutoffDate= DateTime.Now.AddYears(-2);
+            var cutoffDate = DateTime.Now.AddYears(-2);
 
-          int rowsAffected= await _context.Enrollments
-          .Where(e => e.EnrolledAt < cutoffDate  && !e.IsArchived)
-          .ExecuteUpdateAsync(
-            s => s.SetProperty(e => e.IsArchived, true),
-            cancellationToken);
-            return Ok(new {Message = "Archiving complete" , RecordsUpdated = rowsAffected});
-            
-         }
+            int rowsAffected = await _context.Enrollments
+            .Where(e => e.EnrolledAt < cutoffDate && !e.IsArchived)
+            .ExecuteUpdateAsync(
+              s => s.SetProperty(e => e.IsArchived, true),
+              cancellationToken);
+            return Ok(new { Message = "Archiving complete", RecordsUpdated = rowsAffected });
+
+        }
     }
 
 }

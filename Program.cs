@@ -6,13 +6,16 @@ using Scalar.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 using TmsApi.Data;
 using TmsApi.Entities;
-
+using TmsApi.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddProblemDetails();
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
+
+
+builder.Services.AddScoped<ICourseService, CourseService>();
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
@@ -29,26 +32,27 @@ builder.Services.AddAuthentication("Bearer")
 
         };
     });
+
   builder.Services.AddDbContext<TmsDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
     .LogTo(Console.WriteLine, LogLevel.Information)
-    .EnableSensitiveDataLogging());
+    .EnableSensitiveDataLogging()); 
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+app.UseExceptionHandler();
+app.UseStatusCodePages();
 app.UseMiddleware<RequestLoggingMiddleware>();
 if (app.Environment.IsDevelopment())
 {
  app.MapOpenApi();   
  app.MapScalarApiReference();
 }
-else
-{
-    app.UseExceptionHandler();
-}
+
     
 
-app.UseStatusCodePages();
+
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -78,9 +82,9 @@ using (var scope=app.Services.CreateScope())
 
         var courses = new List<Course>
         {
-            new() { Code="CS-101", Name="CS-101", Title = "Introduction to Computer Science", Capacity =30 },
-            new() { Code="CS-201", Name="CS-201", Title = "Data Structures and Algorithm", Capacity =25 },
-            new() { Code="ENG102", Name="ENG102", Title = "Calculus I", Capacity =40 }
+            new() { Code="CS-101",  Title = "Introduction to Computer Science", MaxCapacity =30 },
+            new() { Code="CS-201",  Title = "Data Structures and Algorithm", MaxCapacity =25 },
+            new() { Code="ENG102", Title = "Calculus I", MaxCapacity =40 }
             
         };
         context.Set<Course>().AddRange(courses);

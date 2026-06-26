@@ -1,9 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
+
+using TmsApi.Entities;
+using TmsApi.Services;
+
 namespace TmsApi.Controllers
+
 {
     [ApiController]
     [Route("api/courses")]
-    public class CoursesController : ControllerBase
+    public class CourseController(ICourseService courseService) : ControllerBase
     {
         [HttpGet("all")]
         public IActionResult GetAllCourses()
@@ -25,5 +30,26 @@ namespace TmsApi.Controllers
             var course = new { Code = id, Title = "Introduction to Computer Science", Credits = 4 };
             return Ok(course);
         }
+        
+        
+        
+         [HttpGet("{id:int}" , Name = nameof(GetCourseById))]   
+         public async Task<IActionResult> GetCourseById(int id, CancellationToken ct)
+         {
+            var course = await courseService.GetByIdAsync(id , ct);
+            if (course == null)
+            {
+                return NotFound();
+            }
+            return Ok(course);
+         }
+
+         [HttpPost]
+         public async Task<IActionResult> CreateCourse(Course course, CancellationToken ct)
+         {
+            await courseService.CreateAsync(course, ct);
+
+            return CreatedAtAction(nameof(GetCourseById), new { id = course.Id }, course);
+         }
+        }
     }
-}
