@@ -11,8 +11,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddProblemDetails();
 builder.Services.AddControllers();
-builder.Services.AddOpenApi();
-builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
+builder.Services.AddOpenApi(); 
+// Register enrollment service. Use the concrete implementation name 'EnrollmentService'
+// (some projects name the implementation in plural). If your implementation class
+// is named differently, adjust the type accordingly.
+builder.Services.AddScoped<IEnrollmentService, EnrollmentService>(); 
 
 
 builder.Services.AddScoped<ICourseService, CourseService>();

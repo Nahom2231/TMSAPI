@@ -29,6 +29,14 @@ public class CourseService : ICourseService
             c.Enrollments.Count
             ))
         .FirstOrDefaultAsync(ct);
+
+        public async Task<bool> CodeExistsAsync(string code, CancellationToken ct)=>
+        await context.Courses.AsNoTracking().AnyAsync(c => c.Code == code, ct);
+
+
+
+
+
     
 
     public async Task<CourseResponseDto> CreateAsync(CreateCourseRequest request, CancellationToken ct)
