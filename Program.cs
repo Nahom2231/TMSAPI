@@ -103,5 +103,20 @@ using (var scope=app.Services.CreateScope())
         context.SaveChanges();
     }
 }
+
+// try
+// {
+//     var course = new TmsApi.Entities.Course {Code= "CS-101", Title = "C# Basics", MaxCapacity=10 };
+//     course.Status = TmsApi.Entities.CourseStatus.Archived;
+
+//     if(course.MaxCapacity!=0)
+//      Console.WriteLine("FAIL: Capacity must drop to 0 when archived");
+//      else
+//      Console.WriteLine("PASS: Archived course has zero capacity");
+// }
+// catch(Exception ex)
+// {
+//     Console.WriteLine($"Challenge 1: UNExPECTED FAILURE - {ex.Message}");
+// }
 app.Run();
 
