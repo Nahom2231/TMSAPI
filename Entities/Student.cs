@@ -11,7 +11,8 @@ private readonly List<GradeRecord> _grades = new();
     public required string RegistrationNumber { get; set; }
     public required string Name { get; set; }
     public decimal GPA { get; set; }
-
+    
+    public int Age { get; set; }
     public bool IsActive { get; set; } = true;
 
     public bool IsDeleted {get; set; }

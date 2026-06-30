@@ -1,12 +1,18 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Linq;
 using TmsApi;
 using Scalar.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 using TmsApi.Data;
 using TmsApi.Entities;
 using TmsApi.Services;
+using TmsApi.Controllers;
+using System.Text.RegularExpressions;
+
+
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddProblemDetails();
@@ -118,5 +124,58 @@ using (var scope=app.Services.CreateScope())
 // {
 //     Console.WriteLine($"Challenge 1: UNExPECTED FAILURE - {ex.Message}");
 // }
-app.Run();
 
+var records = new List<EnrollmentRecord>
+{
+    new("S1", "CS1", DateTime.UtcNow),
+    new("S1", "CS2", DateTime.UtcNow),
+    new("S3", "CS1", DateTime.UtcNow),
+    new("S3", "CS1", DateTime.UtcNow),
+    new("S3", "CS1", DateTime.UtcNow),
+    new("S4", "CS1", DateTime.UtcNow),
+    new("S4", "CS2", DateTime.UtcNow),
+};
+
+var testStudents = new List<Student>
+{
+    new Student { RegistrationNumber = "S1", Name = "Abebe", Age = 22, GPA = 3.9m },
+    new Student { RegistrationNumber = "S2", Name = "Kidane", Age = 21, GPA = 2.4m },
+    new Student { RegistrationNumber = "S3", Name = "Dawit", Age = 19, GPA = 3.7m },
+    new Student { RegistrationNumber = "S4", Name = "Sara", Age = 23, GPA = 3.6m },
+};
+
+var report = testStudents
+    .Select(s => new
+    {
+        Student = s,
+        Count = records.Count(r => r.StudentId == s.RegistrationNumber)
+    })
+    .Where(x => x.Student.Age >= 20 && x.Student.GPA >= 3.0m && x.Count >= 2)
+    .Select(x => new
+    {
+        Name = x.Student.Name,
+        GPA = x.Student.GPA,
+        EnrollmentCount = x.Count
+    })
+    .GroupBy(s => s.GPA >= 3.8m ? "High Honors" : s.GPA >= 3.5m ? "Honors" : "Dean's List")
+    .OrderBy(g => g.Key)
+    .Select(g => new
+    {
+        Brand = g.Key,
+        Students = g.OrderByDescending(s => s.GPA).ToList()
+    })
+    .ToList();
+
+    Console.WriteLine("--- GRANT ELIGIBILITY REPORT");
+
+    foreach (var group in report)
+{
+    Console.WriteLine($"  {group.Brand}");
+    foreach (var item in group.Students)
+    {
+        Console.WriteLine($"    {item.Name} ({item.GPA}) - {item.EnrollmentCount} enrollments");
+    }
+}
+
+app.Run();
+public record EnrollmentRecord(string StudentId, string CourseCode, DateTime EnrolledAt);
