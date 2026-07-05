@@ -10,7 +10,8 @@ using TmsApi.Entities;
 using TmsApi.Services;
 using TmsApi.Controllers;
 using System.Text.RegularExpressions;
-
+using Tms.Api.Persistence;
+using TmsApi.Filters;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,6 +26,10 @@ builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 
 
 builder.Services.AddScoped<ICourseService, CourseService>();
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<AuditLogFilter>();
+});
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
@@ -176,6 +181,11 @@ var report = testStudents
         Console.WriteLine($"    {item.Name} ({item.GPA}) - {item.EnrollmentCount} enrollments");
     }
 }
-
+if(app.Environment.IsDevelopment())
+{
+   using var scope = app.Services.CreateScope();
+   var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
+   await DataSeeder.SeedAsync(context); 
+}
 app.Run();
 public record EnrollmentRecord(string StudentId, string CourseCode, DateTime EnrolledAt);

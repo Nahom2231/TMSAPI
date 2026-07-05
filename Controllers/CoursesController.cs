@@ -1,8 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
-
+using TmsApi.Dtos;
 using TmsApi.Entities;
 using TmsApi.Services;
-using TmsApi.Dtos;
+
+using TmsApi.Controllers.Configurations.Dtos;
 namespace TmsApi.Controllers
 
 {
@@ -37,5 +38,12 @@ namespace TmsApi.Controllers
 
             return CreatedAtAction(nameof(GetCourseById), new { id = result.Id }, result);
          }
+         [HttpGet]
+         public async Task<IActionResult> GetCourses([FromQuery] PagedRequest request, CancellationToken ct)
+         {
+            var result = await courseService.GetCoursesAsync(request, ct);
+            return Ok(result);
+         }
+         
         }
     }
