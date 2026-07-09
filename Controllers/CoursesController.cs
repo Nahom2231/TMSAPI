@@ -14,6 +14,9 @@ namespace TmsApi.Controllers
 {
     [ApiController]
     [Route("api/courses")]
+    [Tags("Courses")]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
    public class CoursesController : ControllerBase
    {
       private readonly ICourseService _courseService;
@@ -26,6 +29,12 @@ namespace TmsApi.Controllers
       }
 
       [HttpGet("{id:int}", Name = nameof(GetCourseById))]
+      [ProducesResponseType(typeof(CourseDetailDto), StatusCodes.Status200OK)]
+      [ProducesResponseType(typeof(CourseDetailDto), StatusCodes.Status404NotFound)]
+      [EndpointSummary("Get a course by ID")]
+      [EndpointDescription("Return course details with HATEOAS links. Return 404 if the course doesn't exists")]
+
+      
       public async Task<IActionResult> GetCourseById(int id, CancellationToken ct)
       {
          var course = await _courseService.GetByIdAsync(id, ct);
@@ -76,6 +85,11 @@ namespace TmsApi.Controllers
       public IActionResult DeleteCourse(int id) => NoContent();
 
       [HttpPost]
+      [ProducesResponseType(typeof(CourseResponseDto),StatusCodes.Status201Created)]
+      [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+      [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+      [EndpointSummary("Create a new course")]
+      [EndpointDescription("Creates a course with a unique code.Return409 if the course code already exists")]
       public async Task<IActionResult> CreateCourse(CreateCourseRequest request, CancellationToken ct)
       {
          if (await _courseService.CodeExistsAsync(request.Code, ct))
