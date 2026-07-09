@@ -21,6 +21,21 @@ public class EnrollmentsController : ControllerBase
         _courseService = courseService;
         _enrollmentService = enrollmentService;
     }
+
+    [HttpGet(Name = "ListCourseEnrollments")]
+    public async Task<IActionResult> GetEnrollments(int courseId, CancellationToken ct)
+    {
+        // 1. Confirm the parent course exists
+        var course = await _courseService.GetByIdAsync(courseId, ct);
+        if (course is null)
+        {
+            return NotFound();
+        }
+
+        // 2. Return the list of enrollments for this course
+        var enrollments = await _enrollmentService.GetByCourseAsync(courseId, ct);
+        return Ok(enrollments);
+    }
      [HttpGet("{id:int}" , Name = nameof(GetEnrollment))]
      public async Task<IActionResult> GetEnrollment(int courseId, int id, CancellationToken ct)
     {
@@ -53,7 +68,13 @@ public class EnrollmentsController : ControllerBase
            enrollment
          );
     }
+    [HttpGet(Name = "GetEnrollments")]
+    public IActionResult GetEnrollments (int courseId)
+    {
+        return Ok();
+    }
 
+   
 }
 
 
