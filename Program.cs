@@ -12,12 +12,26 @@ using TmsApi.Controllers;
 using System.Text.RegularExpressions;
 using Tms.Api.Persistence;
 using TmsApi.Filters;
-
+using Asp.Versioning;
+using TmsApi.Middleware;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddProblemDetails();
 builder.Services.AddControllers();
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion= new ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified=true;
+    options.ReportApiVersions=true;
+    options.ApiVersionReader = new UrlSegmentApiVersionReader();
+})
+.AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
 builder.Services.AddOpenApi(); 
 // Register enrollment service. Use the concrete implementation name 'EnrollmentService'
 // (some projects name the implementation in plural). If your implementation class
@@ -71,7 +85,7 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-
+app.UseMiddleware<TmsApi.Middleware.V1DepreciationMiddleware>();
 app.MapControllers();
 using (var scope=app.Services.CreateScope())
 {
