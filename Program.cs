@@ -15,6 +15,11 @@ using TmsApi.Filters;
 using Asp.Versioning;
 using TmsApi.Middleware;
 using Microsoft.Extensions.Options;
+using FluentValidation;
+using TmsApi.Behaviors;
+using TmsApi.ExceptionHandlers;
+using TmsApi.Enrollments.Commands;
+using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -60,13 +65,29 @@ builder.Services.AddAuthentication("Bearer")
 
         };
     });
-
+    // Register FluentValidation validators (removed AddValidatorsFromAssemblyContaining usage
+    // to avoid extension method resolution issues). Register validators explicitly if needed.
+     builder.Services.AddMediatR(cfg =>
+{
+    // This scans the current running assembly (TmsApi) directly
+    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
+    
+    cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
+    cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+});
+      builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+      builder.Services.AddProblemDetails();
+{
+    
+}
   builder.Services.AddDbContext<TmsDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
     .LogTo(Console.WriteLine, LogLevel.Information)
     .EnableSensitiveDataLogging()); 
 builder.Services.AddAuthorization();
+  
 
+  
 var app = builder.Build();
 
 app.UseExceptionHandler();
@@ -79,7 +100,7 @@ if (app.Environment.IsDevelopment())
 }
 
     
-
+app.UseExceptionHandler();
 
 app.UseRouting();
 app.UseAuthentication();
