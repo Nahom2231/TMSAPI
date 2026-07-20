@@ -1,17 +1,20 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using TmsApi.Application.Dtos;
 using TmsApi.Domain.Entities;
 using TmsApi.Application.Services;
 using Microsoft.AspNetCore.Routing;
-
+using TmsApi.Infrastructure.Services;
 
 using Microsoft.AspNetCore.Http.HttpResults;
-namespace TmsApi.Controllers
+using System.Reflection.Metadata.Ecma335;
+namespace TmsApi.Controllers;
 
-{
+
+
     [ApiController]
     [Route("api/courses")]
     [Tags("Courses")]
@@ -22,10 +25,13 @@ namespace TmsApi.Controllers
       private readonly ICourseService _courseService;
       private readonly LinkGenerator _linkGenerator;
 
-      public CoursesController(ICourseService courseService, LinkGenerator linkGenerator)
+      private readonly ICachedCourseService _cachedCourseService;
+   
+      public CoursesController(ICourseService courseService, LinkGenerator linkGenerator , ICachedCourseService cachedCourseService)
       {
          _courseService = courseService;
          _linkGenerator = linkGenerator;
+         _cachedCourseService = cachedCourseService;
       }
 
       [HttpGet("{id:int}", Name = nameof(GetCourseById))]
@@ -64,25 +70,27 @@ namespace TmsApi.Controllers
             links.Add(new LinkDto(enrollmentsPath, "enroll", "POST"));
          }
 
-         var detailDto = new CourseDetailDto
-         {
-            Id = course.Id,
-            Code = course.Code,
-            Title = course.Title,
-            MaxCapacity = course.MaxCapacity,
-            EnrollmentCount = course.EnrollmentCount,
-            
-            Links = links
-         };
+        var detailDto = await _cachedCourseService.GetCourseAsync(course.Code, ct);
 
-         return Ok(detailDto);
+       var responseDto = detailDto with { Links = links };
+        return Ok(responseDto);
       }
 
       [HttpPut("{id:int}")]
-      public IActionResult UpdateCourse(int id) => Ok();
+      public async Task<IActionResult> UpdateCourse(int id, [FromBody] CourseDetailDto request, CancellationToken ct)
+      {
+         await _cachedCourseService.InvalidateCourseCacheAsync(ct);
+
+         return Ok();
+      }
 
       [HttpDelete("{id:int}")]
-      public IActionResult DeleteCourse(int id) => NoContent();
+      public async Task<IActionResult> DeleteCourse(int id, CancellationToken ct)
+      {
+         await _cachedCourseService.InvalidateCourseCacheAsync(ct);
+
+         return NoContent();
+      }
 
       [HttpPost]
       [ProducesResponseType(typeof(CourseResponseDto),StatusCodes.Status201Created)]
@@ -103,15 +111,17 @@ namespace TmsApi.Controllers
          }
 
          var result = await _courseService.CreateAsync(request, ct);
+
+         await _cachedCourseService.InvalidateCourseCacheAsync(ct);
          return CreatedAtAction(nameof(GetCourseById), new { id = result.Id }, result);
       }
 
       [HttpGet]
       public async Task<IActionResult> GetCourses([FromQuery] PagedRequest request, CancellationToken ct)
       {
-         var result = await _courseService.GetCoursesAsync(request, ct);
+         var result = await _cachedCourseService.GetAllCoursesAsync(ct);
          return Ok(result);
       }
    }
-}
+
 

@@ -1,6 +1,6 @@
 
 namespace TmsApi.Application.Dtos;
-public record CourseResponseDtos;
+
 
 public record CourseResponseDto(
     int Id,

@@ -1,3 +1,4 @@
+#pragma warning disable EXTEXP0018
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.Collections.Generic;
 using System.Text.Json;
@@ -20,11 +21,23 @@ using TmsApi.ExceptionHandlers;
 using TmsApi.Enrollments.Commands;
 using TmsApi.Domain.Entities;
 using Microsoft.Extensions.DependencyInjection;
-
+using System.Collections.Specialized;
+using Microsoft.Extensions.Caching;
+using TmsApi.Infrastructure.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddProblemDetails();
 builder.Services.AddControllers();
+builder.Services.AddHybridCache(options=>
+{
+options.DefaultEntryOptions = new Microsoft.Extensions.Caching.Hybrid.HybridCacheEntryOptions
+{
+ Expiration = TimeSpan.FromMinutes(10),
+
+LocalCacheExpiration = TimeSpan.FromMinutes(2)
+ };
+});
+builder.Services.AddScoped<ICachedCourseService, CachedCourseService>();
 builder.Services.AddApiVersioning(options =>
 {
     options.DefaultApiVersion= new ApiVersion(1, 0);
@@ -85,7 +98,7 @@ builder.Services.AddAuthentication("Bearer")
     .LogTo(Console.WriteLine, LogLevel.Information)
     .EnableSensitiveDataLogging()); 
 builder.Services.AddAuthorization();
-  
+builder.Services.AddScoped<TmsApi.Application.Common.ITmsDbContext>(provider => provider.GetRequiredService<TmsDbContext>());  
 
   
 var app = builder.Build();
@@ -98,7 +111,10 @@ app.UseStatusCodePages();
 if (app.Environment.IsDevelopment())
 {
  app.MapOpenApi();   
- app.MapScalarApiReference();
+ app.MapScalarApiReference(options =>
+{
+    options.WithOpenApiRoutePattern("/openapi/{documentName}.json");
+});
 }
 
     
@@ -218,11 +234,11 @@ var report = testStudents
         Console.WriteLine($"    {item.Name} ({item.GPA}) - {item.EnrollmentCount} enrollments");
     }
 }
-if(app.Environment.IsDevelopment())
-{
-   using var scope = app.Services.CreateScope();
-   var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
+// if(app.Environment.IsDevelopment())
+// {
+//    using var scope = app.Services.CreateScope();
+//    var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
 //    await DataSeeder.SeedAsync(context); 
-}
+//}
 app.Run();
 public record EnrollmentRecord(string StudentId, string CourseCode, DateTime EnrolledAt);

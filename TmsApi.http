@@ -1,6 +1,11 @@
-@TmsApi_HostAddress = http://localhost:5029
+PUT https://localhost:5029/api/courses/1
+Content-Type: application/json
 
-GET {{TmsApi_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
+{
+  "id": 1,
+  "code": "CS-101",
+  "title": "Updated Title",
+  "maxCapacity": 30,
+  "enrollmentCount": 2,
+  "links": []
+}
