@@ -7,7 +7,7 @@ using TmsApi;
 using Scalar.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 
-
+using TmsApi.Infrastructure.Workers;
 using TmsApi.Application.Services;
 using TmsApi.Controllers;
 using System.Text.RegularExpressions;
@@ -30,6 +30,9 @@ using Microsoft.AspNetCore.RateLimiting;
 using System.Net;
 using TmsApi.Api.RateLimiting;
 using System.Security.Principal;
+using System.Threading.Channels;
+using TmsApi.Application.Transcripts;
+using TmsApi.Infrastructure.Transcripts;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRateLimiter(options =>
 {
@@ -107,10 +110,18 @@ options.DefaultEntryOptions = new Microsoft.Extensions.Caching.Hybrid.HybridCach
 LocalCacheExpiration = TimeSpan.FromMinutes(2)
  };
 });
+builder.Services.AddHostedService<TranscriptWorker>();
+builder.Services.AddSingleton<ITranscriptStatusStore, InMemoryTranscriptStatusStore>();
+
+builder.Services.AddSingleton(Channel.CreateBounded<TranscriptRequest>(
+    new BoundedChannelOptions(100)
+    {
+      FullMode = BoundedChannelFullMode.Wait  
+    }));
 builder.Services.AddScoped<ICachedCourseService, CachedCourseService>();
 builder.Services.AddApiVersioning(options =>
 {
-    options.DefaultApiVersion= new ApiVersion(1, 0);
+    options.DefaultApiVersion= new ApiVersion(2, 0);
     options.AssumeDefaultVersionWhenUnspecified=true;
     options.ReportApiVersions=true;
     options.ApiVersionReader = new UrlSegmentApiVersionReader();
