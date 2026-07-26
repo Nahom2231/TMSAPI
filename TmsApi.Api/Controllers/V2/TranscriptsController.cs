@@ -42,10 +42,13 @@ public class TranscriptController(
             }
         }
         var reportId = Guid.NewGuid().ToString("N")[..12];
-        var status = await statusStore.CreateAsync(reportId, request.StudentId,ct);
+        var status = await statusStore.CreateAsync(reportId, request.StudentId, ct);
 
         if(!string.IsNullOrWhiteSpace(idempotencyKey))
         await statusStore.LinkIdempotencyKeyAsync(idempotencyKey, reportId, ct);
+       var queuedRequest = request with { ReportId = reportId };
+       await channel.Writer.WriteAsync(queuedRequest, ct);
+        
         Response.Headers.RetryAfter= "5";
         return Accepted(
             Url.Action(nameof(GetStatus), new {id= reportId}), status);

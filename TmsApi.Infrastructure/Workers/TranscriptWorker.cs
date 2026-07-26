@@ -4,13 +4,16 @@ using TmsApi.Application.Transcripts;
 using TmsApi.Infrastructure.Transcripts;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
+using TmsApi.Application.Hubs;
 namespace TmsApi.Infrastructure.Workers;
 
 public class TranscriptWorker(
     Channel<TranscriptRequest> channel,
     IServiceScopeFactory scopeFactory,
     ITranscriptStatusStore statusStore,
+   IHubContext<TmsHub, ITmsHubClient> hubContext,
     ILogger<TranscriptWorker> logger)
     :BackgroundService
 {
@@ -36,7 +39,13 @@ public class TranscriptWorker(
 
                 await statusStore.MarkReadyAsync(reportId, downloadUrl, ct);
 
-                logger.LogInformation("Transcript ready: {ReportId}", reportId);
+                await hubContext.Clients
+                .Group(GroupNames.Student(request.StudentId.ToString()))
+                .ReceiveTranscriptReady(reportId, downloadUrl);
+
+
+                logger.LogInformation("Transcript ready: notification sent: {ReportId} to {Group}",
+                reportId, GroupNames.Student(request.StudentId.ToString()));
             }
             catch(OperationCanceledException) when (ct.IsCancellationRequested)
             {

@@ -33,6 +33,7 @@ using System.Security.Principal;
 using System.Threading.Channels;
 using TmsApi.Application.Transcripts;
 using TmsApi.Infrastructure.Transcripts;
+using TmsApi.Application.Hubs;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRateLimiter(options =>
 {
@@ -179,8 +180,19 @@ builder.Services.AddAuthentication("Bearer")
     .LogTo(Console.WriteLine, LogLevel.Information)
     .EnableSensitiveDataLogging()); 
 builder.Services.AddAuthorization();
-builder.Services.AddScoped<TmsApi.Application.Common.ITmsDbContext>(provider => provider.GetRequiredService<TmsDbContext>());  
-
+builder.Services.AddScoped<TmsApi.Application.Common.ITmsDbContext>(provider => provider.GetRequiredService<TmsDbContext>());
+builder.Services.AddHostedService<TranscriptWorker>();  
+builder.Services.AddSignalR();
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyHeader()
+              .AllowAnyMethod()
+              .SetIsOriginAllowed(_ => true) // allows local browser test
+              .AllowCredentials();
+    });
+});
   
 var app = builder.Build();
 
@@ -202,12 +214,14 @@ if (app.Environment.IsDevelopment())
 app.UseExceptionHandler();
 
 app.UseRouting();
+app.UseCors();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.UseMiddleware<TmsApi.Middleware.V1DepreciationMiddleware>();
 app.MapControllers();
+app.MapHub<TmsHub>("/hubs/tms");
 using (var scope=app.Services.CreateScope())
 {
     var context=scope.ServiceProvider.GetRequiredService<TmsDbContext>();
