@@ -165,7 +165,7 @@ builder.Services.AddAuthentication("Bearer")
      builder.Services.AddMediatR(cfg =>
 {
     // This scans the current running assembly (TmsApi) directly
-    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
+    cfg.RegisterServicesFromAssembly(typeof(TmsApi.Application.Queries.GetCoursesHandler).Assembly);
     
     //cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
     //cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));

@@ -30,13 +30,20 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
                 g=>g.Select(e =>e.ErrorMessage).ToArray()
             );
         }
-        else
-        {
-          problemDetails.Status = (int)HttpStatusCode.InternalServerError;
-          problemDetails.Title= "An unexpected error occurred";
-          problemDetails.Type= "https://datatracker.ietf.org/doc/html/rfc7231#section-6.6.1";
-          problemDetails.Detail= "Internal server error. Please trace using the provided correlation ID";  
-        }
+       else if (exception is BadHttpRequestException badRequestException)
+{
+    problemDetails.Status = (int)HttpStatusCode.BadRequest;
+    problemDetails.Title = "Bad Request";
+    problemDetails.Type = "https://datatracker.ietf.org/doc/html/rfc7231#section-6.5.1";
+    problemDetails.Detail = badRequestException.Message;
+}
+else
+{
+    problemDetails.Status = (int)HttpStatusCode.InternalServerError;
+    problemDetails.Title = "An unexpected error occurred";
+    problemDetails.Type = "https://datatracker.ietf.org/doc/html/rfc7231#section-6.6.1";
+    problemDetails.Detail = "Internal server error. Please trace using the provided correlation ID";
+}
         var correlationId = System.Diagnostics.Activity.Current?.TraceId.ToString() ?? httpContext.TraceIdentifier;
         problemDetails.Extensions["correlationId"] = correlationId;
 

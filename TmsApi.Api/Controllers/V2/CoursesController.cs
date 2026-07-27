@@ -1,68 +1,81 @@
+using System.ComponentModel.DataAnnotations;
+using System.Reflection.Metadata;
+using System.Reflection.Metadata.Ecma335;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TmsApi.Infrastructure.Persistence;
-
+using MediatR;
+using TmsApi.Application.Queries;
+using TmsApi.Application.Dtos;
+using TmsApi.Application.Utilities;
 namespace TmsApi.Controllers.V2;
 
 [ApiController]
-[Route("api/v{version:apiVersion}/courses")]
 [ApiVersion("2.0")]
-public class CoursesController(TmsDbContext context) : ControllerBase
+[Route("api/v{version:apiVersion}/[controller]")]
+
+public class CoursesController : ControllerBase
 {
-    [HttpGet]
-    public async Task<IActionResult> GetCourses(
-        [FromQuery] int page =1,
-        [FromQuery] int pageSize =20,
-        CancellationToken ct = default)
+    private readonly IMediator mediator;
+
+    public CoursesController(IMediator mediator)
     {
-        page = Math.Max(1, page);
-        pageSize = Math.Clamp(pageSize, 1, 50);
-        var baseQuery = context.Courses.AsNoTracking();
+        this.mediator = mediator;
+    }
 
-       var totalCount = await baseQuery.CountAsync(ct);
-       var rows = await baseQuery
-       .OrderBy(c =>c.Title)
-       .Skip((page - 1) * pageSize)
-        .Take(pageSize)
-       .Select(c => new
+    [HttpGet]
+
+    public async Task<IActionResult> GetCourses(
+        [FromQuery] string? fields,
+        [FromQuery] PagedRequest paging,
+        CancellationToken ct)
+    {
+       var courses = await mediator.Send(new GetCoursesQuery(paging), ct);
+        var shaped = courses.Items.ShapeData(fields, CourseDtoFields.Allowed);
+
+        var links = new List<LinkDto>
         {
-         c.Id,
-         c.Title,
-         c.Code,
-         c.MaxCapacity,
-         EnrollmentCount = c.Enrollments.Count
+            new(Url.Action(nameof(GetCourses), new {page = courses.Page, fields})!, "self", "Get")
 
-        })
-        .ToListAsync(ct);
-        var totalPages = (int)Math.Ceiling(totalCount/ (double)pageSize);
-        var hasNext = page < totalPages;
-        var hasPrevious =page>1;
-
-        return Ok(new
+        };
+        if (courses.HasNext)
         {
-            data = rows,
-            meta = new
-            {
-                totalCount,
-                page,
-                pageSize,
-                totalPages,
-                hasNext,
-                hasPrevious
+            links.Add(new(Url.Action(nameof(GetCourses), new  {page = courses.Page + 1,  fields})!, "next", "Get"));
+        }
+        if (courses.HasPrevious)
+        {
+            links.Add(new (Url.Action(nameof(GetCourses), new { page = courses.Page -1, fields})!, "prev", "Get"));
+        }
+         return Ok(new
+         {
+             Data = shaped,
+             Meta = new
+             {
+                 courses.TotalCount,
+                 courses.Page,
+                 courses.TotalPages,
+                 courses.HasNext,
+                 courses.HasPrevious
+             },
+             Links = links
+         });
+    }
+    [HttpGet("{code}")]
 
-            },
-            links = new
-            {
-                self = $"/api/v2/courses?page={page}&pageSize={pageSize}",
-                next = hasNext
-                ? $"/api/v2/courses?page={page + 1} &pageSize={pageSize}"
-                : (string?)null,
-                prev = hasPrevious
-                ? $"/api/v2/courses?page={page - 1}&pageSize={pageSize}"
-                :(string?)null,
-                enroll = "/api/v2/enrollments"
-            }
+    public async Task<IActionResult> GetCourse(string code, CancellationToken ct)
+    {
+        var course = await mediator.Send(new GetCourseQuery(code), ct);
+        if (course is null) return NotFound();
+
+         return Ok(new
+         {
+           Data = course,
+           Links = new[]
+           {
+             new LinkDto(Url.Action(nameof(GetCourse), new{ code})!, "self", "GET"),
+             new LinkDto(Url.Action("Enroll", "Enrollments", new {courseCode = code})!, "enroll", "POST")
+         }
         });
     }
     
