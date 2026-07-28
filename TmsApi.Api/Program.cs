@@ -34,6 +34,15 @@ using System.Threading.Channels;
 using TmsApi.Application.Transcripts;
 using TmsApi.Infrastructure.Transcripts;
 using TmsApi.Application.Hubs;
+using System.Security.Cryptography.X509Certificates;
+using Polly;
+using Polly.CircuitBreaker;
+using Polly.Retry;
+using Polly.Timeout;
+using System.IO.Pipes;
+using System.Runtime.Serialization;
+using TmsApi.Application.Interfaces;
+using TmsApi.Infrastructure.ExternalServices;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRateLimiter(options =>
 {
@@ -170,11 +179,8 @@ builder.Services.AddAuthentication("Bearer")
     //cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
     //cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
 });
-      builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-      builder.Services.AddProblemDetails();
-{
-    
-}
+    builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+    builder.Services.AddProblemDetails();
   builder.Services.AddDbContext<TmsDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
     .LogTo(Console.WriteLine, LogLevel.Information)
@@ -193,7 +199,58 @@ builder.Services.AddCors(options =>
               .AllowCredentials();
     });
 });
-  
+ builder.Services.AddResiliencePipeline("certificate-api", pipeline =>
+ {
+     pipeline.AddTimeout(TimeSpan.FromSeconds(5))
+
+     .AddCircuitBreaker(new CircuitBreakerStrategyOptions
+     {
+         FailureRatio = 0.5,
+         MinimumThroughput = 10,
+         SamplingDuration = TimeSpan.FromSeconds(30),
+         BreakDuration = TimeSpan.FromSeconds(15),
+         ShouldHandle = new PredicateBuilder()
+
+            .Handle<HttpRequestException>()
+            .Handle<TimeoutRejectedException>(),
+        OnOpened = args=>
+        {
+            Console.WriteLine("Circuit OPENED- stopping requests to certificate Service");
+            return ValueTask.CompletedTask;
+        },
+        OnClosed = args =>
+        {
+            Console.WriteLine("Circuit CLOSED - certificate service recovered");
+            return ValueTask.CompletedTask;
+        }
+     })
+     .AddRetry(new RetryStrategyOptions
+     {
+         MaxRetryAttempts=3,
+         Delay = TimeSpan.FromMilliseconds(500),
+         BackoffType = DelayBackoffType.Exponential,
+         UseJitter = true,
+         ShouldHandle = new PredicateBuilder()
+         .Handle<HttpRequestException>()
+         .Handle<TimeoutRejectedException>(),
+         OnRetry = args =>
+         {
+             Console.WriteLine($"Retry #{args.AttemptNumber} after {args.RetryDelay.TotalMilliseconds:FO}ms ({args.Outcome.Exception?.GetType().Name})");
+             return ValueTask.CompletedTask;
+         }
+     });
+ 
+     
+ });
+ 
+ builder.Services.AddHttpClient<ICertificateService, CertificateService>((sp, client) =>
+ {
+     var baseUrl = sp.GetRequiredService<IConfiguration>().GetValue<string>("TmsApi:PublicBaseUrl")
+     ?? "https://localhost:5029";
+     client.BaseAddress = new Uri(baseUrl);
+ });
+
+
 var app = builder.Build();
 
 app.UseExceptionHandler();
@@ -215,7 +272,7 @@ app.UseExceptionHandler();
 
 app.UseRouting();
 app.UseCors();
-app.UseRateLimiter();
+//app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -330,6 +387,29 @@ var report = testStudents
         Console.WriteLine($"    {item.Name} ({item.GPA}) - {item.EnrollmentCount} enrollments");
     }
 }
+var attempts=0;
+app.MapPost("/fake/certificates", async () =>
+{
+    var n = Interlocked.Increment(ref attempts);
+    if (n % 7 == 0)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(20));
+        return Results.Ok(new {Status = "issued", Attempts = n });
+
+
+    }
+    if(n%3 != 0)
+    {
+        return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+    }
+
+    if (n % 11 == 0)
+    {
+        return Results.BadRequest(new {error = "validation_failed " });
+    }
+    return Results.Ok(new {Status = "issued", Attempt = n });
+}).WithTags("Lab-fixtures");
+
 // if(app.Environment.IsDevelopment())
 // {
 //    using var scope = app.Services.CreateScope();
