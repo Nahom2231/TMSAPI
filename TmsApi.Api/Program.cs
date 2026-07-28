@@ -43,6 +43,16 @@ using System.IO.Pipes;
 using System.Runtime.Serialization;
 using TmsApi.Application.Interfaces;
 using TmsApi.Infrastructure.ExternalServices;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using HealthChecks.NpgSql;
+using System.Diagnostics.Tracing;
+using System.Data.Common;
+using System.CodeDom.Compiler;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using OpenTelemetry.Exporter;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRateLimiter(options =>
 {
@@ -249,7 +259,34 @@ builder.Services.AddCors(options =>
      ?? "https://localhost:5029";
      client.BaseAddress = new Uri(baseUrl);
  });
+ builder.Services.AddHealthChecks()
+ .AddCheck("self", ()=>HealthCheckResult.Healthy("alive"), tags: ["live"])
+ .AddNpgSql(
+     builder.Configuration.GetConnectionString("DefaultConnection")!,
+    name: "postgres",
+    tags: ["ready"]);
+ builder.Logging.AddJsonConsole(options =>
+ {
+     options.IncludeScopes = true;
+     options.JsonWriterOptions = new() { Indented= false};
+ });
+ const string ServiceName = "tms-api";
 
+ builder.Services.AddOpenTelemetry()
+ .ConfigureResource(r => r.AddService(
+    serviceName: ServiceName,
+    serviceVersion: "1.0.0"))
+    .WithTracing(t => t
+    .AddSource(ServiceName)
+    .AddAspNetCoreInstrumentation()
+    .AddHttpClientInstrumentation()
+    .AddOtlpExporter())
+   .WithMetrics(m=> m
+   .AddMeter(ServiceName)
+   .AddAspNetCoreInstrumentation()
+   .AddHttpClientInstrumentation()
+   .AddRuntimeInstrumentation()
+   .AddOtlpExporter());
 
 var app = builder.Build();
 
@@ -266,7 +303,14 @@ if (app.Environment.IsDevelopment())
     options.WithOpenApiRoutePattern("/openapi/{documentName}.json");
 });
 }
-
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = check =>check.Tags.Contains("live")
+}).DisableRateLimiting();
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate= check => check.Tags.Contains("ready")
+}).DisableRateLimiting();
     
 app.UseExceptionHandler();
 

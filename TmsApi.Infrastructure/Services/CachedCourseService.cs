@@ -53,6 +53,10 @@ using TmsApi.Application.Dtos;
 
             if (!dbHit)
             _logger.LogInformation("Cache HIT for {Key}", key);
+            if(dbHit)
+            TmsMeters.CacheMisses.Add(1, new KeyValuePair<string, object?>("key.kind", "course"));
+            else
+            TmsMeters.CacheHits.Add(1, new KeyValuePair<string, object?>("key.kind", "course"));
 
         return dto;
     }
@@ -86,6 +90,12 @@ using TmsApi.Application.Dtos;
 
         if (!dbHit)
             _logger.LogInformation("Cache HIT for {Key}", key);
+
+            if(dbHit)
+            TmsMeters.CacheMisses.Add(1, new KeyValuePair<string, object?>("key.kind", "course"));
+            else
+            TmsMeters.CacheHits.Add(1, new KeyValuePair<string, object?>("key.kind", "course"));
+
 
         return list;
     }
