@@ -201,9 +201,10 @@ builder.Services.AddHostedService<TranscriptWorker>();
 builder.Services.AddSignalR();
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(policy =>
+    options.AddPolicy("Allow Angular", policy =>
     {
-        policy.AllowAnyHeader()
+     policy.WithOrigins("http://localhost:4200")
+               .AllowAnyHeader()
               .AllowAnyMethod()
               .SetIsOriginAllowed(_ => true) // allows local browser test
               .AllowCredentials();
@@ -315,7 +316,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 app.UseExceptionHandler();
 
 app.UseRouting();
-app.UseCors();
+app.UseCors("Allow Angular");
 //app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
