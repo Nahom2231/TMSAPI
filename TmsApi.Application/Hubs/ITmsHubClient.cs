@@ -6,6 +6,8 @@ public interface ITmsHubClient
     Task ReceiveCourseUpdate(string courseCode, string message);
 
     Task ReceiveGradePosted(string courseCode, int studentId, decimal grade);
+
+    Task ReceiveEnrollmentStatusUpdated(string enrollmentId, string status);
 }
 public static class GroupNames
 {

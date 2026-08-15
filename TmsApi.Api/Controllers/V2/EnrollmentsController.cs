@@ -3,11 +3,13 @@ using Microsoft.AspNetCore.Mvc;
 using TmsApi.Enrollments.Commands;
 using TmsApi.Enrollments.Queries;
 using TmsApi.Application.Enrollments.Commands;
+using Microsoft.AspNetCore.SignalR;
+using TmsApi.Application.Hubs;
 namespace TmsApi.Controllers.V2;
 
 [ApiController]
 [Route("api/v2/enrollments")]
-public class EnrollmentsController(IMediator mediator) : ControllerBase
+public class EnrollmentsController(IMediator mediator, IHubContext<TmsHub, ITmsHubClient> hubContext ) : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> Enroll(
@@ -35,6 +37,14 @@ public class EnrollmentsController(IMediator mediator) : ControllerBase
         var query =new GetStudentScheduleQuery(studentId);
         var schedule = await mediator.Send(query, ct);
         return Ok(schedule);
+    }
+
+    [HttpPost("{id}/approve")]
+    public async Task <IActionResult> Approve(string id, CancellationToken ct)
+    {
+        await hubContext.Clients.All.ReceiveEnrollmentStatusUpdated(id, "Approved");
+
+        return NoContent();
     }
     
 }

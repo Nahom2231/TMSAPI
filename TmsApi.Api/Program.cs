@@ -53,6 +53,9 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using OpenTelemetry.Exporter;
+using System.Security.Authentication.ExtendedProtection;
+using Microsoft.AspNetCore.Antiforgery;
+using System.Security;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRateLimiter(options =>
 {
@@ -159,6 +162,7 @@ builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 
 
 builder.Services.AddScoped<ICourseService, CourseService>();
+ builder.Services.AddProblemDetails();
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add<AuditLogFilter>();
@@ -190,7 +194,6 @@ builder.Services.AddAuthentication("Bearer")
     //cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
 });
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-    builder.Services.AddProblemDetails();
   builder.Services.AddDbContext<TmsDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
     .LogTo(Console.WriteLine, LogLevel.Information)
@@ -288,11 +291,30 @@ builder.Services.AddCors(options =>
    .AddHttpClientInstrumentation()
    .AddRuntimeInstrumentation()
    .AddOtlpExporter());
+var allowedOrigins = builder.Configuration
+    .GetSection("AllowedOrigins")
+    .Get<string[]>() ?? new[] { "http://localhost:4200" };
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("TmsClient", policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials()
+            .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
+    });
+});
+
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "X-XSRF-TOKEN";
+});
 
 var app = builder.Build();
-
-app.UseExceptionHandler();
 app.UseStatusCodePages();
+app.UseExceptionHandler();
 // Request logging middleware removed because the type was not available in this project.
 // If you add a RequestLoggingMiddleware implementation, re-enable the line below:
 // app.UseMiddleware<RequestLoggingMiddleware>();
@@ -316,14 +338,32 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 app.UseExceptionHandler();
 
 app.UseRouting();
+app.UseCors("TmsClient");
 app.UseCors("Allow Angular");
 //app.UseRateLimiter();
+app.UseMiddleware<TmsApi.Middleware.V1DepreciationMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseMiddleware<TmsApi.Middleware.V1DepreciationMiddleware>();
+app.Use(async (context, next)=>
+{
+    if (context.User.Identity?.IsAuthenticated==true|| context.Request.Cookies.ContainsKey("tms_auth"))
+    {
+        var antiforgery = context.RequestServices.GetRequiredService<IAntiforgery>();
+        var tokens = antiforgery.GetAndStoreTokens(context);
+
+        context.Response.Cookies.Append("XSRF-TOKEN", tokens.RequestToken!,
+        new CookieOptions
+        {
+            HttpOnly = false,
+            Secure =!app.Environment.IsDevelopment(),
+            SameSite= SameSiteMode.Strict
+        });
+    }
+    await next (context);
+});
 app.MapControllers();
-app.MapHub<TmsHub>("/hubs/tms");
+app.MapHub<TmsHub>("/hubs/tms").RequireCors("TmsClient");
 using (var scope=app.Services.CreateScope())
 {
     var context=scope.ServiceProvider.GetRequiredService<TmsDbContext>();
