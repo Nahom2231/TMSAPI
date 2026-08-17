@@ -501,5 +501,15 @@ app.MapPost("/fake/certificates", async () =>
 //    var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
 //    await DataSeeder.SeedAsync(context); 
 //}
+var cryptoService = new CryptoDemoService();
+string hash1= cryptoService.HashUserPassword("Password123!");
+string hash2= cryptoService.HashUserPassword("Password123!");
+
+Console.WriteLine($"[BCrypt Demo] Hash 1: {hash1}");
+Console.WriteLine($"[BCrypt Demo] Hash 2: {hash2}");
+Console.WriteLine($"[BCrypt Demo]  Match 1: {cryptoService.VerifyUserPassword("Password123!", hash1 )}");
+Console.WriteLine($"[BCrypt Demo]  Match 2:  {cryptoService.VerifyUserPassword("Password123!", hash2)}");
+
+
 app.Run();
 public record EnrollmentRecord(string StudentId, string CourseCode, DateTime EnrolledAt);
