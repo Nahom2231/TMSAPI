@@ -36,3 +36,14 @@ Idempotency-Key: TRIGGER-NOW-100
 {
   "studentId": 1
 }
+
+
+###
+POST http://localhost:5029/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "leul.Instructor@cotbe.edu.et",
+  "password": "WrongPassword123"
+
+}
