@@ -336,21 +336,23 @@ builder.Services.AddIdentityCore<TmsUser>(options =>
 
 builder.Services.AddScoped<TokenService>();
 
-builder.Services.AddAuthentication(FileOptions =>
+builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    FileOptions.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
-.AddJwtBeare(options =>
+.AddJwtBearer(options =>
 options.TokenValidationParameters = new TokenValidationParameters
 {
     ValidateIssuer =true,
     ValidateAudience = true,
-    ValidateLifeTIme = true,
+    ValidateLifetime = true,
     ValidateIssuerSigningKey=true,
-    ValidIssuer= builder.Configuration["Jwt:Audience"],
+    ValidIssuer= builder.Configuration["Jwt:Issuer"],
+    ValidAudience= builder.Configuration["Jwt:Audience"],
+    
     IssuerSigningKey= new SymmetricSecurityKey(
-         Encoding.UTF8.GetBytes(builder.Configuration[Jwt:Key]!))
+         Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
     
     });
 
