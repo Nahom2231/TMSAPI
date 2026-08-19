@@ -57,6 +57,10 @@ using System.Security.Authentication.ExtendedProtection;
 using Microsoft.AspNetCore.Antiforgery;
 using System.Security;
 using Microsoft.AspNetCore.Identity;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRateLimiter(options =>
@@ -329,6 +333,28 @@ builder.Services.AddIdentityCore<TmsUser>(options =>
 })
 .AddRoles<IdentityRole>()
 .AddEntityFrameworkStores<TmsDbContext>();
+
+builder.Services.AddScoped<TokenService>();
+
+builder.Services.AddAuthentication(FileOptions =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    FileOptions.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBeare(options =>
+options.TokenValidationParameters = new TokenValidationParameters
+{
+    ValidateIssuer =true,
+    ValidateAudience = true,
+    ValidateLifeTIme = true,
+    ValidateIssuerSigningKey=true,
+    ValidIssuer= builder.Configuration["Jwt:Audience"],
+    IssuerSigningKey= new SymmetricSecurityKey(
+         Encoding.UTF8.GetBytes(builder.Configuration[Jwt:Key]!))
+    
+    });
+
+
 
 var app = builder.Build();
 app.UseStatusCodePages();
