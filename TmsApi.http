@@ -47,3 +47,39 @@ Content-Type: application/json
   "password": "WrongPassword123"
 
 }
+###
+
+POST  http://localhost:5029/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "leul.instructor@cotbe.edu.et",
+  "password": "Password123!"
+}
+###
+
+POST http://localhost:5029/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "dev.test@cotbe.edu.et",
+  "password": "Password123!#",
+  "firstName": "Sara"
+}
+
+###
+POST http://localhost:5029/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "dev.test@cotbe.edu.et",
+  "password": "Password123!#"
+}
+
+### Test Token Refresh
+POST http://localhost:5029/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "f24684ec8b834000a92e7bec3d534718"
+}

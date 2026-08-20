@@ -173,22 +173,7 @@ builder.Services.AddControllers(options =>
 {
     options.Filters.Add<AuditLogFilter>();
 });
-builder.Services.AddAuthentication("Bearer")
-    .AddJwtBearer("Bearer", options =>
-    {
-        options.TokenValidationParameters=new Microsoft.IdentityModel.Tokens.TokenValidationParameters
-        {
-          ValidateIssuer=true,
-          ValidateAudience = true,
-          ValidateLifetime=true,
-          ValidIssuer="https://localhost:7295",
-          ValidAudience="https://localhost:7295",
-          IssuerSigningKey= new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
-              System.Text.Encoding.UTF8.GetBytes("YourSuperSecretkeyThatisLongEnough123")
-          )
 
-        };
-    });
     // Register FluentValidation validators (removed AddValidatorsFromAssemblyContaining usage
     // to avoid extension method resolution issues). Register validators explicitly if needed.
      builder.Services.AddMediatR(cfg =>
