@@ -340,7 +340,11 @@ options.TokenValidationParameters = new TokenValidationParameters
          Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
     
     });
+  builder.Services.AddAuthorizationBuider()
+  .AddPolicy("CanEditCourse", policy =>
+    policy.Requirements.Add(new CourseInstructorRequirement()));
 
+    builder.Services.AddSingleton<IAuthorizationHandler, CourseInstructorHandler>();
 
 
 var app = builder.Build();

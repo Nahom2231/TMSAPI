@@ -8,13 +8,14 @@ using TmsApi.Domain.Entities;
 using TmsApi.Application.Services;
 using Microsoft.AspNetCore.Routing;
 using TmsApi.Infrastructure.Services;
-
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using System.Reflection.Metadata.Ecma335;
+using System.Reflection.Metadata;
 namespace TmsApi.Controllers;
 
 
-
+    [Authorize(Roles ="Instructor , Admin" )]
     [ApiController]
     [Route("api/courses")]
     [Tags("Courses")]
@@ -26,12 +27,15 @@ namespace TmsApi.Controllers;
       private readonly LinkGenerator _linkGenerator;
 
       private readonly ICachedCourseService _cachedCourseService;
+
+      private readonly IAuthorizationService _authorizationService;
    
       public CoursesController(ICourseService courseService, LinkGenerator linkGenerator , ICachedCourseService cachedCourseService)
       {
          _courseService = courseService;
          _linkGenerator = linkGenerator;
          _cachedCourseService = cachedCourseService;
+         _authorizationService= authorizationService;
       }
 
       [HttpGet("{id:int}", Name = nameof(GetCourseById))]
@@ -79,6 +83,15 @@ namespace TmsApi.Controllers;
       [HttpPut("{id:int}")]
       public async Task<IActionResult> UpdateCourse(int id, [FromBody] CourseDetailDto request, CancellationToken ct)
       {
+
+         var course = await _courseService.GetByIdAsync(id, ct);
+         if(course == null) return NotFound();
+
+         var authResult = await _authorizationService.AuthorizeAsync(User, course, "CanEditCourse");
+         if (!authResult.Succeeded)
+      {
+         return Forbid();
+      }
          await _cachedCourseService.InvalidateCourseCacheAsync(ct);
 
          return Ok();
