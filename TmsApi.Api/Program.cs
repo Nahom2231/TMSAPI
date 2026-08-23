@@ -60,7 +60,8 @@ using Microsoft.AspNetCore.Identity;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-
+using Microsoft.AspNetCore.Authorization;
+using TmsApi.Api.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRateLimiter(options =>
@@ -340,7 +341,7 @@ options.TokenValidationParameters = new TokenValidationParameters
          Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
     
     });
-  builder.Services.AddAuthorizationBuider()
+  builder.Services.AddAuthorizationBuilder()
   .AddPolicy("CanEditCourse", policy =>
     policy.Requirements.Add(new CourseInstructorRequirement()));
 

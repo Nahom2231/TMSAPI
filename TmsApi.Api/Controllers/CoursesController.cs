@@ -30,7 +30,7 @@ namespace TmsApi.Controllers;
 
       private readonly IAuthorizationService _authorizationService;
    
-      public CoursesController(ICourseService courseService, LinkGenerator linkGenerator , ICachedCourseService cachedCourseService)
+      public CoursesController(ICourseService courseService, LinkGenerator linkGenerator , ICachedCourseService cachedCourseService, IAuthorizationService authorizationService)
       {
          _courseService = courseService;
          _linkGenerator = linkGenerator;

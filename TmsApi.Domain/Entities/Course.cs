@@ -17,6 +17,8 @@ public class Course
     public required string Code {get;  set;}
     public required string Title { get; set; }
 
+    public string? InstructorId { get; set; }
+
     public int  MaxCapacity { get; set; }
 
     public CourseStatus Status
