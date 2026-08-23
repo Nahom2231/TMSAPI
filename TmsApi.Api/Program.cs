@@ -346,7 +346,15 @@ options.TokenValidationParameters = new TokenValidationParameters
     policy.Requirements.Add(new CourseInstructorRequirement()));
 
     builder.Services.AddSingleton<IAuthorizationHandler, CourseInstructorHandler>();
-
+ builder.Services.AddRateLimiter(options=>
+ {
+     options.AddFixedWindowLimiter("AuthLimiter", options =>
+     {
+       options.PermitLimit = 5;
+       options.Window = TimeSpan.FromMinutes(1);
+       options.QueueLimit = 0;  
+     });
+ });
 
 var app = builder.Build();
 app.UseStatusCodePages();
@@ -354,6 +362,18 @@ app.UseExceptionHandler();
 // Request logging middleware removed because the type was not available in this project.
 // If you add a RequestLoggingMiddleware implementation, re-enable the line below:
 // app.UseMiddleware<RequestLoggingMiddleware>();
+
+app.Use(async (context, next)=>
+{
+    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+    context.Response.Headers.Append("X-Frame-Options", "DENY");
+    context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
+    context.Response.Headers.Append(
+        "Content-Security-Policy",
+         "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';");
+
+         await next();
+});
 if (app.Environment.IsDevelopment())
 {
  app.MapOpenApi();   
@@ -374,9 +394,10 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 app.UseExceptionHandler();
 
 app.UseRouting();
+app.UseRateLimiter();
 app.UseCors("TmsClient");
 app.UseCors("Allow Angular");
-//app.UseRateLimiter();
+
 app.UseMiddleware<TmsApi.Middleware.V1DepreciationMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
