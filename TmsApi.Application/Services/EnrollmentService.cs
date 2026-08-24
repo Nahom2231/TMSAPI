@@ -60,4 +60,15 @@ public class EnrollmentService : IEnrollmentService
             ))
             .ToListAsync(ct);
     }
+    public async Task<bool> ExistsAsync(int studentId, string courseCode, CancellationToken ct = default)
+{
+    return await _context.Enrollments
+        .AnyAsync(e => e.StudentId == studentId && e.Course.Code == courseCode, ct);
+}
+
+public async Task AddAsync(Enrollment enrollment, CancellationToken ct = default)
+{
+    await _context.Enrollments.AddAsync(enrollment, ct);
+    await _context.SaveChangesAsync(ct);
+}
 }

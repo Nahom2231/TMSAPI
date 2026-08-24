@@ -1,46 +1,53 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
+using TmsApi.Application.Services;
 using TmsApi.Domain.Common;
-
 using TmsApi.Domain.Entities;
-using TmsApi.Application.Common;
 
 namespace TmsApi.Application.Enrollments.Commands;
 
-public class EnrollmentStudentHandler(ITmsDbContext context)
-:IRequestHandler<EnrollStudentCommand, Result<EnrollmentCreated, EnrollmentError>>
+public class EnrollStudentHandler : IRequestHandler<EnrollStudentCommand, Result<EnrollmentCreated, EnrollmentError>>
 {
-public async Task<Result<EnrollmentCreated, EnrollmentError>> Handle(
-    EnrollStudentCommand command, CancellationToken ct)
+    private readonly IEnrollmentService _enrollmentService;
+    private readonly ICourseService _courseService;
+
+    public EnrollStudentHandler(IEnrollmentService enrollmentService, ICourseService courseService)
     {
-  var course = await context.Courses
-  .Include(c => c.Enrollments)
-  .FirstOrDefaultAsync(c =>c.Code == command.CourseCode, ct);
-   
-    if (course is null)
-     return Result<EnrollmentCreated, EnrollmentError>.Failure(
-  EnrollmentError.CourseNotFound(command.CourseCode));
+        _enrollmentService = enrollmentService;
+        _courseService = courseService;
+    }
 
-  if (course.Enrollments.Count >= course.MaxCapacity)
-  return Result<EnrollmentCreated, EnrollmentError>.Failure(
-  EnrollmentError.CourseFull(course.Title, course.MaxCapacity));
-
- var alreadyEnrolled = await context.Enrollments
- .AnyAsync(e =>e.StudentId == command.StudentId && e.CourseId == course.Id, ct);
- if(alreadyEnrolled)
- return Result<EnrollmentCreated, EnrollmentError>.Failure(
-    EnrollmentError.AlreadyEnrolled(command.StudentId, command.CourseCode));
-    var enrollment = new Enrollment()
+    public async Task<Result<EnrollmentCreated, EnrollmentError>> Handle(
+        EnrollStudentCommand command, CancellationToken ct)
     {
-      StudentId = command.StudentId,
-      CourseId = course.Id,
-      EnrolledAt = DateTime.UtcNow  
-    };
+        var course = await _courseService.GetByCodeAsync(command.CourseCode, ct);
+        if (course is null)
+        {
+            return Result<EnrollmentCreated, EnrollmentError>.Failure(
+                EnrollmentError.CourseNotFound(command.CourseCode));
+        }
 
-    context.Enrollments.Add(enrollment);
-    await context.SaveChangesAsync(ct);
+        var alreadyEnrolled = await _enrollmentService.ExistsAsync(command.StudentId, command.CourseCode, ct);
+        if (alreadyEnrolled)
+        {
+            return Result<EnrollmentCreated, EnrollmentError>.Failure(
+                EnrollmentError.AlreadyEnrolled(command.StudentId, command.CourseCode));
+        }
 
-    return Result<EnrollmentCreated, EnrollmentError>.Success(
-        new EnrollmentCreated(enrollment.Id, enrollment.StudentId, course.Code));
+        if (course.Enrollments.Count >= course.MaxCapacity)
+        {
+            return Result<EnrollmentCreated, EnrollmentError>.Failure(
+                EnrollmentError.CourseFull(course.Title, course.MaxCapacity));
+        }
+
+        var enrollment = new Enrollment
+        {
+            StudentId = command.StudentId,
+            CourseId = course.Id
+        };
+
+        await _enrollmentService.AddAsync(enrollment, ct);
+
+        return Result<EnrollmentCreated, EnrollmentError>.Success(
+            new EnrollmentCreated(enrollment.Id, command.StudentId, command.CourseCode));
     }
 }

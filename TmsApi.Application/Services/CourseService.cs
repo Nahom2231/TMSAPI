@@ -96,7 +96,12 @@ public class CourseService : ICourseService
     PageSize = request.pageSize
 };
 }       
-
+public async Task<Course?> GetByCodeAsync(string code, CancellationToken ct = default)
+{
+    return await context.Courses
+        .Include(c => c.Enrollments)
+        .FirstOrDefaultAsync(c => c.Code == code, ct);
+}
 
 }
 
