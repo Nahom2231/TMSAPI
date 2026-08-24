@@ -569,4 +569,5 @@ Console.WriteLine($"[BCrypt Demo]  Match 2:  {cryptoService.VerifyUserPassword("
 
 
 app.Run();
+public partial class Program {}
 public record EnrollmentRecord(string StudentId, string CourseCode, DateTime EnrolledAt);

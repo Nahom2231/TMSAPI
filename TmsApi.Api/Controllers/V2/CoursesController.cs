@@ -78,5 +78,20 @@ public class CoursesController : ControllerBase
          }
         });
     }
-    
+    [HttpPost]
+    public async Task<IActionResult> CreateCourse([FromBody] CreateCourseRequest request, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Code))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Validation Error",
+                Detail = "Course code is required.",
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        // Return 201 Created or appropriate response
+        return CreatedAtAction(nameof(GetCourse), new { version = "2.0", code = request.Code }, request);
+    }
 }
