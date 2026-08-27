@@ -38,7 +38,15 @@ public class EnrollStudentHandler : IRequestHandler<EnrollStudentCommand, Result
             return Result<EnrollmentCreated, EnrollmentError>.Failure(
                 EnrollmentError.CourseFull(course.Title, course.MaxCapacity));
         }
+        const int maxEnrollmentsAllowed = 3; 
+        var studentEnrollmentCount = await _enrollmentService.GetCountByStudentIdAsync(command.StudentId, ct);
 
+       if (studentEnrollmentCount >= maxEnrollmentsAllowed)
+{
+        return Result<EnrollmentCreated, EnrollmentError>.Failure(
+        EnrollmentError.MaxEnrollmentsReached(command.StudentId) // or your domain's error definition
+        );
+}
         var enrollment = new Enrollment
         {
             StudentId = command.StudentId,

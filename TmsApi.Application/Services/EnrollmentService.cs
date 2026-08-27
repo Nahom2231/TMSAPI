@@ -71,4 +71,9 @@ public async Task AddAsync(Enrollment enrollment, CancellationToken ct = default
     await _context.Enrollments.AddAsync(enrollment, ct);
     await _context.SaveChangesAsync(ct);
 }
+public async Task<int> GetCountByStudentIdAsync(int studentId, CancellationToken ct = default)
+{
+    return await _context.Enrollments
+        .CountAsync(e => e.StudentId == studentId && !e.IsArchived, ct);
+}
 }

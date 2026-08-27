@@ -15,4 +15,6 @@ public interface IEnrollmentService
     // Add these two methods:
     Task<bool> ExistsAsync(int studentId, string courseCode, CancellationToken ct = default);
     Task AddAsync(Enrollment enrollment, CancellationToken ct = default);
+    Task<int> GetCountByStudentIdAsync(int studentId, CancellationToken ct = default);
+
 }
