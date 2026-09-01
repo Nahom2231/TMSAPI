@@ -31,7 +31,7 @@ public class EnrollStudentHandlerTests
 
         courseService
             .GetByCodeAsync("CS-401", Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(course));
+            .Returns(Task.FromResult<Course?>(course));
 
         enrollmentService
             .ExistsAsync(99, "CS-401", Arg.Any<CancellationToken>())
@@ -73,7 +73,7 @@ public class EnrollStudentHandlerTests
 
         courseService
             .GetByCodeAsync("CS-401", Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(course));
+            .Returns(Task.FromResult<Course?>(course));
 
         var handler = new EnrollStudentHandler(enrollmentService, courseService);
         var command = new EnrollStudentCommand(StudentId: 100, CourseCode: "CS-401");
