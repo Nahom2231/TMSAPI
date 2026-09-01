@@ -1,60 +1,145 @@
-This document is a guided lab instruction sheet for a backend software development module focused on ASP.NET Core 10 Fundamentals. It outlines a practical hands-on session where you will fix and improve the request pipeline of a Training Management System (TMS) API.
+# Training Management System (TMS) API
 
-Here is a brief, line-by-line explanation of every detail in the text:
+![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)
+![C# 13](https://img.shields.io/badge/C%23-13.0-239120?logo=csharp)
+![Entity Framework Core](https://img.shields.io/badge/EF%20Core-10.0-512BD4)
+![Scalar API](https://img.shields.io/badge/API%20Docs-Scalar-10B981)
+![License](https://img.shields.io/badge/License-MIT-blue)
 
-Module Header & Metadata
-"Module 4 Guided Lab Session 1: Request Flow & Visibility": This is the first lab session of Module 4, focusing on how HTTP requests travel through the application and how to make those operations visible via logging.
+A modern, high-performance **Training Management System (TMS) RESTful Web API** built with **ASP.NET Core 10** following **Clean Architecture** principles and **CQRS pattern**. 
 
-"Module | M4 ASP.NET Core 10 Fundamentals": Identifies the course curriculum area as ASP.NET Core 10 basics.
+This system provides comprehensive management for educational institutions and training centers, supporting **Student Profiles, Course Catalogs, Real-time Enrollments, Assessment Grading, Certificate Generation, and Transcript Export Processing**.
 
-"Exercises | 1 (Middleware Ordering), 1B (Custom Request Logging Middleware)": Lists the two core exercises you will complete during this lab.
+---
 
-"After this session you can show...": Defines the grading or success criteria. You must be able to demonstrate three things: unauthenticated users are blocked, responses return a tracking ID, and logs match up perfectly using that ID.
+## 🌟 Key Features
 
-The Goal of the Session
-"Welcome to the Backend Foundation Sprint": Introduces this phase of your backend development training.
+### 🏛️ Architecture & Design Patterns
+- **Clean Architecture**: Decoupled multi-project structure (`Api`, `Application`, `Infrastructure`, `Domain`, and `Tests`).
+- **CQRS & MediatR Pattern**: Clear separation of command mutations and query operations.
+- **Decorator Pattern Caching**: `CachedCourseService` wrapping data access with high-performance `IMemoryCache`.
+- **API Versioning (V1 & V2)**: Seamless API evolution supported by custom `V1DeprecationMiddleware` providing standard HTTP `Deprecation` and `Sunset` headers.
 
-"You keep building the same Training Management System (TMS) API you will extend it": You aren't starting from scratch; you are continuing to build on a recurring project called the Training Management System.
+### 🔐 Security & Authorization
+- **JWT & Cookie Authentication**: Secure cookie handling with XSRF-TOKEN antiforgery protection.
+- **Claim-Based Authorization**: Custom policy handlers like `CourseInstructorHandler` for fine-grained resource security.
+- **Password Hashing**: Industry-standard password hashing via BCrypt.
 
-"A previous build’s Program.cs runs, but behaviour on a sensitive route is wrong...": The application compiles and starts up, but a critical security flaw exists on a private URL. You will find and fix it by analyzing the HTTP response codes and the order of operations.
+### ⚡ Real-Time Features & Background Processing
+- **SignalR Real-Time Hubs**: `TmsHub` for live notification dispatches to connected clients.
+- **Background Worker Services**: `TranscriptWorker` hosted service for async transcript export jobs.
+- **Resilient Upstream Integration**: Circuit-breaker and retry logic simulation for certificate issuance services.
 
-"Later you add tracing so failures are tied to a single request": After fixing the bug, you will implement a tracking system so system errors can be traced back to the exact user request that caused them.
+### 📊 API Visibility, Health & Documentation
+- **Scalar OpenAPI Documentation**: Modern, interactive API reference available at `/scalar/v1`.
+- **Request Tracing Middleware**: `RequestLoggingMiddleware` with custom `X-Correlation-Id` headers.
+- **Health Check Endpoints**: `/health/live` (liveness) and `/health/ready` (readiness) probes.
+- **Automated Data Seeding**: `DataSeeder` service for instant database population in dev/testing environments.
 
-"In M1 you modelled Student, Course... In M4 you host those concerns on the web server": Reminds you that in Module 1, you created the data structures (Classes/Models). Now, in Module 4, you are making them accessible over the internet via a web server.
+---
 
-"Session 1 is narrow on purpose...": Clarifies that this lab focuses deeply on just two things: securing a private endpoint and setting up robust debugging logs.
+## 🛠️ Technology Stack
 
-Breakdown of the Two Exercises
-"By the end of Exercise 1: GET /api/assessments/results rejects anonymous callers with 401...": The ultimate goal of the first exercise is to ensure that trying to read assessment grades without logging in results in an HTTP 401 Unauthorized error instead of leaking data.
+- **Framework**: .NET 10 (C# 13)
+- **Data Access**: Entity Framework Core 10, LINQ, In-Memory / SQL Server Context
+- **Validation**: FluentValidation
+- **Real-Time Communication**: ASP.NET Core SignalR
+- **Documentation**: Microsoft.AspNetCore.OpenApi & Scalar.AspNetCore
+- **Testing**: xUnit, Moq, Microsoft.AspNetCore.Mvc.Testing
 
-"You earn that outcome by fixing how the pipeline is wired—without relying on comments...": You will achieve this security fix by understanding how middleware ordering works, rather than looking for cheat-sheet comments in the code.
+---
 
-"By the end of Exercise 1B: you wrap the pipeline in custom logging...": In the second exercise, you will inject code to intercept all traffic, generate a unique X-Correlation-Id header, and set up a global error-handling safety net (UseExceptionHandler).
+## 📂 Project Structure
 
-"...the same posture you will reconnect when Session 3 adds ProblemDetails and Scalar": This sets up the foundational architecture that future labs (Session 3) will plug into for standard API error formatting and API documentation.
+```text
+TmsApi/
+├── TmsApi.Api/                       # Presentation Layer (Controllers, Middleware, Hubs)
+│   ├── Authorization/                # Custom Requirement Handlers
+│   ├── Controllers/                  # V1 & V2 API Endpoints
+│   ├── Middleware/                   # Logging & Versioning Middleware
+│   ├── Hubs/                         # SignalR WebSockets Hub
+│   ├── Program.cs                    # Application Pipeline Configuration
+│   └── appsettings.json              # System Settings & Database Connection Strings
+├── TmsApi.Application/               # Application Layer (Use Cases, CQRS Commands/Queries)
+│   ├── Enrollments/                  # Enrollment Commands & Validators
+│   └── Services/                     # Core Business Services & Interfaces
+├── TmsApi.Infrastructure/            # Infrastructure Layer (Data Persistence & External Services)
+│   ├── Persistence/                  # DbContext & DataSeeder
+│   ├── Services/                     # Cached Services & Decorators
+│   └── Workers/                      # Background Hosted Workers
+├── TmsApi.Domain/                    # Domain Layer (Entities, Enums, Interfaces)
+│   ├── Entities/                     # Student, Course, Enrollment, Assessment models
+│   └── Common/                       # Shared Value Objects & Domain Exceptions
+└── TmsApi.Tests/                     # Testing Layer (Unit & Integration Tests)
+    ├── AssessmentsApiTests.cs        # End-to-End API Integration Tests
+    ├── GetCourseHandlerTests.cs      # CQRS Query Unit Tests
+    └── EnrollStudentHandlerTests.cs  # Command Execution Unit Tests
+```
 
-Setup Instructions: The TmsApi Project
-"Before you begin: the TmsApi project": Prepares you to set up your environment.
+---
 
-"Module 4 uses one ASP.NET Core Web API project... Create it once... and keep working in that same folder": A strict warning to create this folder exactly once. Future exercises build on top of this exact codebase, so you shouldn't create a new project for later labs.
+## 🚀 Getting Started
 
-"If you closed your machine... open the existing TmsApi directory... do not run dotnet new again": A reminder to reuse your existing directory if you take a break and come back later.
+### Prerequisites
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) or higher
+- IDE: Visual Studio 2022 / VS Code / JetBrains Rider
 
-Step-by-Step Terminal Commands
-"Open your terminal and run these commands one time when you begin M4": Directs you to open your command line interface to execute the initial configuration.
+### Installation & Setup
 
-dotnet --version (Check your SDK version: must show 10.x): Verifies that your computer is running the correct, up-to-date .NET 10 Software Development Kit.
+1. **Clone the Repository**
+   ```bash
+   git clone https://github.com/YourUsername/TMSAPI.git
+   cd TMSAPI
+   ```
 
-dotnet new webapi -n TmsApi --no-openapi --use-controllers: Creates a new Web API project named TmsApi using traditional Controllers rather than Minimal APIs, while skipping the default documentation setup for now.
+2. **Restore Dependencies**
+   ```bash
+   dotnet restore
+   ```
 
-cd TmsApi (Move into the project directory): Navigates your terminal inside the newly created project folder.
+3. **Run Database Migrations & Seeding**
+   The application automatically seeds sample data on startup via `DataSeeder`.
 
-code . (Open it in VS Code): Launches Visual Studio Code directly inside your project workspace.
+4. **Run the Application**
+   ```bash
+   cd TmsApi.Api
+   dotnet run
+   ```
 
-"Find Program.cs. You will rewrite it throughout this session": Points you to the main entry file of the application, which is where your middleware pipeline edits will happen.
+5. **Access Interactive API Docs**
+   Open your browser and navigate to:
+   - **Scalar API Reference**: `http://localhost:5000/scalar/v1`
+   - **OpenAPI JSON Spec**: `http://localhost:5000/openapi/v1.json`
 
-dotnet run (Confirm the project builds and runs): Compiles the source code and starts the local web server.
+---
 
-info: Microsoft.Hosting.Lifetime[14] Now listening on: http://localhost:5xxx: Shows you what a successful terminal startup message looks like, confirming your backend is live on a local port.
+## 🧪 Running Tests
 
-"Press Ctrl+C to stop the server": Explains how to safely shut down the running backend application in your terminal.
+Execute the full suite of unit and integration tests:
+
+```bash
+dotnet test
+```
+
+---
+
+## 🌐 API Endpoints Overview
+
+| Category | Method | Endpoint | Description |
+| :--- | :--- | :--- | :--- |
+| **Auth** | `POST` | `/api/auth/login` | Authenticate user and issue JWT / Cookie |
+| **Courses** | `GET` | `/api/v1/courses` | List all active courses |
+| **Courses** | `GET` | `/api/v2/courses` | Paginated course catalog with caching |
+| **Students** | `GET` | `/api/v1/students` | Retrieve student profiles & GPAs |
+| **Enrollments**| `POST` | `/api/v1/enrollments` | Enroll student in a course |
+| **Assessments**| `GET` | `/api/assessments` | Fetch student grades and course assessments |
+| **Certificates**| `POST`| `/api/v2/certificates` | Request course completion certificate |
+| **Transcripts** | `POST`| `/api/v2/transcripts` | Trigger background transcript export worker |
+| **Health** | `GET` | `/health/live` | Liveness health check probe |
+| **Health** | `GET` | `/health/ready` | Readiness health check probe |
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
