@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using TmsApi.Domain.Entities;
 
@@ -9,23 +10,23 @@ public class CourseInstructorHandler : AuthorizationHandler<CourseInstructorRequ
     protected override Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         CourseInstructorRequirement requirement,
-        Course resource
-    )
+        Course resource)
     {
         var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
         var isInstructor = context.User.IsInRole("Instructor");
         var isAdmin = context.User.IsInRole("Admin");
 
-        if(isAdmin)
+        if (isAdmin)
         {
-           context.Succeed(requirement);
-           return Task.CompletedTask;
-
+            context.Succeed(requirement);
+            return Task.CompletedTask;
         }
-        if(isInstructor && resource.InstructorId.ToString() == userId)
+
+        if (isInstructor && !string.IsNullOrEmpty(resource.InstructorId) && resource.InstructorId == userId)
         {
             context.Succeed(requirement);
         }
+
         return Task.CompletedTask;
     }
 }
