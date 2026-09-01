@@ -7,15 +7,16 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using TmsApi.Application.Hubs;
+
 namespace TmsApi.Infrastructure.Workers;
 
 public class TranscriptWorker(
     Channel<TranscriptRequest> channel,
     IServiceScopeFactory scopeFactory,
     ITranscriptStatusStore statusStore,
-   IHubContext<TmsHub, ITmsHubClient> hubContext,
+    IHubContext<TmsHub, ITmsHubClient> hubContext,
     ILogger<TranscriptWorker> logger)
-    :BackgroundService
+    : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
@@ -24,7 +25,7 @@ public class TranscriptWorker(
         await foreach (var request in channel.Reader.ReadAllAsync(ct))
         {
             var reportId = request.ReportId
-            ?? throw new InvalidOperationException("ReportId must be set before queueing.");
+                ?? throw new InvalidOperationException("ReportId must be set before queueing.");
 
             try
             {
@@ -32,22 +33,26 @@ public class TranscriptWorker(
                 logger.LogInformation(
                     "Generating transcript {ReportId} for student {StudentId}",
                     reportId, request.StudentId);
+                
                 using var scope = scopeFactory.CreateScope();
 
-                await Task.Delay(TimeSpan.FromSeconds(5), ct);
-                var downloadUrl = $"/api/v2/trancripts/{reportId}/download";
+                await Task.Delay(TimeSpan.FromSeconds(3), ct);
+                var downloadUrl = $"/api/v2/transcripts/{reportId}/download";
 
                 await statusStore.MarkReadyAsync(reportId, downloadUrl, ct);
 
                 await hubContext.Clients
-                .Group(GroupNames.Student(request.StudentId.ToString()))
-                .ReceiveTranscriptReady(reportId, downloadUrl);
+                    .Group(GroupNames.Student(request.StudentId.ToString()))
+                    .ReceiveTranscriptReady(reportId, downloadUrl);
 
+                // Also notify all clients for dashboard visibility
+                await hubContext.Clients.All
+                    .ReceiveTranscriptReady(reportId, downloadUrl);
 
                 logger.LogInformation("Transcript ready: notification sent: {ReportId} to {Group}",
-                reportId, GroupNames.Student(request.StudentId.ToString()));
+                    reportId, GroupNames.Student(request.StudentId.ToString()));
             }
-            catch(OperationCanceledException) when (ct.IsCancellationRequested)
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
                 logger.LogWarning("Worker shutdown - transcript {ReportId} did not complete", reportId);
                 throw;
