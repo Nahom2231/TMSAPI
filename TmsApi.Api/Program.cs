@@ -200,12 +200,15 @@ builder.Services.AddIdentityCore<TmsUser>(options =>
     options.Password.RequireUppercase = true;
     options.Password.RequireDigit = true;
     options.Password.RequireNonAlphanumeric = false;
-    options.Lockout.MaxFailedAccessAttempts = 5;
-    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    options.Lockout.MaxFailedAccessAttempts = 6;
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromSeconds(60);
     options.Lockout.AllowedForNewUsers = true;
 })
 .AddRoles<IdentityRole>()
-.AddEntityFrameworkStores<TmsDbContext>();
+.AddEntityFrameworkStores<TmsDbContext>()
+.AddDefaultTokenProviders();
+
+builder.Services.AddScoped<IPasswordHasher<TmsUser>, BcryptPasswordHasher>();
 
 // ----------------------------------------------------
 // 6. AUTHENTICATION & AUTHORIZATION

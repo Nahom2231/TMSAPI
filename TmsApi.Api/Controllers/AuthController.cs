@@ -41,6 +41,8 @@ public class AuthController : ControllerBase
     public record LoginRequest(string Email, string Password);
     public record RefreshRequest(string RefreshToken);
     public record RegisterRequest(string Email, string Password, string FirstName, string? Role);
+    public record ForgotPasswordRequest(string Email);
+    public record ResetPasswordRequest(string Email, string Token, string NewPassword);
 
     [EnableRateLimiting("AuthLimiter")]
     [HttpPost("login")]
@@ -57,11 +59,17 @@ public class AuthController : ControllerBase
 
         if (await _userManager.IsLockedOutAsync(user))
         {
-            return StatusCode(423, new ProblemDetails
+            var lockoutEnd = await _userManager.GetLockoutEndDateAsync(user);
+            var secondsRemaining = lockoutEnd.HasValue 
+                ? (int)Math.Max(1, (lockoutEnd.Value.UtcDateTime - DateTime.UtcNow).TotalSeconds)
+                : 60;
+
+            return StatusCode(StatusCodes.Status423Locked, new ProblemDetails
             {
                 Title = "Account Locked",
-                Detail = "Account locked due to multiple failed login attempts.",
-                Status = 423
+                Detail = $"Account locked due to multiple failed login attempts. Please wait {secondsRemaining} seconds.",
+                Status = StatusCodes.Status423Locked,
+                Extensions = { ["lockoutSeconds"] = secondsRemaining }
             });
         }
 
@@ -69,11 +77,29 @@ public class AuthController : ControllerBase
         if (!validPassword)
         {
             await _userManager.AccessFailedAsync(user);
+
+            if (await _userManager.IsLockedOutAsync(user))
+            {
+                return StatusCode(StatusCodes.Status423Locked, new ProblemDetails
+                {
+                    Title = "Account Locked",
+                    Detail = "Account has been locked for 60 seconds due to repeated failed login attempts.",
+                    Status = StatusCodes.Status423Locked,
+                    Extensions = { ["lockoutSeconds"] = 60 }
+                });
+            }
+
+            var failedCount = await _userManager.GetAccessFailedCountAsync(user);
+            var remainingAttempts = Math.Max(0, 6 - failedCount);
+
             return Unauthorized(new ProblemDetails
             {
                 Title = "Authentication Failed",
-                Detail = "Invalid email or password.",
-                Status = StatusCodes.Status401Unauthorized
+                Detail = remainingAttempts > 0 
+                    ? $"Invalid email or password. {remainingAttempts} attempt(s) remaining before temporary lockout."
+                    : "Invalid email or password.",
+                Status = StatusCodes.Status401Unauthorized,
+                Extensions = { ["failedCount"] = failedCount, ["remainingAttempts"] = remainingAttempts }
             });
         }
         await _userManager.ResetAccessFailedCountAsync(user);
@@ -172,6 +198,27 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Invalid Request",
+                Detail = "Email and password are required.",
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        // Enforce password policy: min 8 characters, at least one uppercase letter, at least one digit
+        if (request.Password.Length < 8 || !request.Password.Any(char.IsUpper) || !request.Password.Any(char.IsDigit))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Password Policy Violation",
+                Detail = "Password must be at least 8 characters long and contain at least one uppercase letter and one digit.",
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
         var existingUser = await _userManager.FindByEmailAsync(request.Email);
         if (existingUser != null)
         {
@@ -209,6 +256,93 @@ public class AuthController : ControllerBase
         await _userManager.AddToRoleAsync(user, targetRole);
 
         return Ok(new { message = "User registered successfully.", email = user.Email, role = targetRole });
+    }
+
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Invalid Request",
+                Detail = "Email is required.",
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        if (user == null)
+        {
+            // Security best practice: Do not leak user existence, return friendly success
+            return Ok(new 
+            { 
+                message = "If an account exists with this email, password reset instructions have been generated.", 
+                email = request.Email 
+            });
+        }
+
+        var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+        return Ok(new
+        {
+            message = "Password reset instructions and token generated successfully.",
+            email = user.Email,
+            resetToken // Provided for direct verification / development flow
+        });
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Token) || string.IsNullOrWhiteSpace(request.NewPassword))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Invalid Request",
+                Detail = "Email, reset token, and new password are required.",
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        // Enforce password policy
+        if (request.NewPassword.Length < 8 || !request.NewPassword.Any(char.IsUpper) || !request.NewPassword.Any(char.IsDigit))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Password Policy Violation",
+                Detail = "Password must be at least 8 characters long and contain at least one uppercase letter and one digit.",
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        if (user == null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "User Not Found",
+                Detail = "No user found with the specified email address.",
+                Status = StatusCodes.Status404NotFound
+            });
+        }
+
+        var result = await _userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Password Reset Failed",
+                Detail = string.Join("; ", result.Errors.Select(e => e.Description)),
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        // Clear any active lockout and failed counter
+        await _userManager.SetLockoutEndDateAsync(user, null);
+        await _userManager.ResetAccessFailedCountAsync(user);
+
+        return Ok(new { message = "Password has been successfully reset. You may now log in with your new password." });
     }
 
     [Authorize]
