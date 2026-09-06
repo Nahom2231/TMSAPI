@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TMS Enterprise - Training Management System</title>
+  <meta name="description" content="Next-Generation Training Management System (TMS) with real-time course enrollment, asynchronous transcripts, automated grading, and resilience monitoring.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <!-- SignalR Client Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+</head>
+<body>
+  <!-- Ambient background lighting -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <!-- Top Navigation Bar -->
+  <header class="navbar" id="main-nav">
+    <div class="nav-container">
+      <div class="nav-brand">
+        <div class="brand-icon">
+          <i class="fa-solid fa-graduation-cap"></i>
+        </div>
+        <div class="brand-info">
+          <span class="brand-name">TMS<span class="brand-accent">Enterprise</span></span>
+          <span class="brand-badge">API v2.0 Live</span>
+        </div>
+      </div>
+
+      <div class="nav-metrics">
+        <div class="metric-pill" id="server-status-pill">
+          <span class="status-dot pulse-green"></span>
+          <span id="server-status-text">Connecting...</span>
+        </div>
+        <div class="metric-pill">
+          <i class="fa-solid fa-bolt text-indigo"></i>
+          <span id="ws-status-text">SignalR Live</span>
+        </div>
+      </div>
+
+      <div class="nav-actions">
+        <button class="btn btn-icon" id="theme-toggle-btn" title="Toggle Theme" aria-label="Toggle Theme">
+          <i class="fa-solid fa-moon"></i>
+        </button>
+
+        <a href="/scalar/v1" target="_blank" class="btn btn-secondary" id="scalar-docs-btn">
+          <i class="fa-solid fa-book-bookmark"></i>
+          <span>Scalar Docs</span>
+        </a>
+
+        <!-- User profile / Auth Button -->
+        <div class="auth-box" id="auth-box">
+          <button class="btn btn-primary" id="login-modal-open-btn">
+            <i class="fa-solid fa-user-lock"></i>
+            <span>Sign In</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Application Container -->
+  <main class="main-content">
+    <!-- Hero / KPI Banner -->
+    <section class="hero-stats-grid">
+      <div class="stat-card" id="kpi-courses">
+        <div class="stat-icon icon-indigo">
+          <i class="fa-solid fa-layer-group"></i>
+        </div>
+        <div class="stat-content">
+          <span class="stat-label">Active Courses</span>
+          <h3 class="stat-value" id="count-courses">--</h3>
+          <span class="stat-sub">Across all departments</span>
+        </div>
+      </div>
+
+      <div class="stat-card" id="kpi-students">
+        <div class="stat-icon icon-emerald">
+          <i class="fa-solid fa-user-graduate"></i>
+        </div>
+        <div class="stat-content">
+          <span class="stat-label">Enrolled Students</span>
+          <h3 class="stat-value" id="count-students">--</h3>
+          <span class="stat-sub">Active & Verified</span>
+        </div>
+      </div>
+
+      <div class="stat-card" id="kpi-enrollments">
+        <div class="stat-icon icon-amber">
+          <i class="fa-solid fa-clipboard-check"></i>
+        </div>
+        <div class="stat-content">
+          <span class="stat-label">Total Enrollments</span>
+          <h3 class="stat-value" id="count-enrollments">--</h3>
+          <span class="stat-sub">Real-time tracked</span>
+        </div>
+      </div>
+
+      <div class="stat-card" id="kpi-system-status">
+        <div class="stat-icon icon-cyan">
+          <i class="fa-solid fa-heart-pulse"></i>
+        </div>
+        <div class="stat-content">
+          <span class="stat-label">System Health</span>
+          <h3 class="stat-value text-emerald" id="health-status-badge">100% Operational</h3>
+          <span class="stat-sub" id="last-ping-time">Response: &lt;5ms</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Navigation Tabs -->
+    <nav class="app-tab-nav" id="app-tabs">
+      <button class="tab-btn active" data-target="tab-courses" id="tab-btn-courses">
+        <i class="fa-solid fa-book-open"></i> Courses & Capacity
+      </button>
+      <button class="tab-btn" data-target="tab-students" id="tab-btn-students">
+        <i class="fa-solid fa-users"></i> Students & Gradebook
+      </button>
+      <button class="tab-btn" data-target="tab-enrollments" id="tab-btn-enrollments">
+        <i class="fa-solid fa-user-plus"></i> Enrollment Hub
+      </button>
+      <button class="tab-btn" data-target="tab-assessments" id="tab-btn-assessments">
+        <i class="fa-solid fa-chart-line"></i> Performance & Grades
+      </button>
+      <button class="tab-btn" data-target="tab-transcripts" id="tab-btn-transcripts">
+        <i class="fa-solid fa-file-shield"></i> Async Transcripts & Certs
+      </button>
+      <button class="tab-btn" data-target="tab-tester" id="tab-btn-tester">
+        <i class="fa-solid fa-terminal"></i> API Playground & Tracing
+      </button>
+    </nav>
+
+    <!-- Tab 1: Courses Management -->
+    <section class="tab-panel active" id="tab-courses">
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <h2>Course Catalog & Capacity Tracking</h2>
+          <p>Explore all available training modules, check real-time enrollment capacity, and manage course offerings.</p>
+        </div>
+        <div class="panel-action-group">
+          <div class="search-input-wrapper">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="course-search-input" placeholder="Search by code or title...">
+          </div>
+          <button class="btn btn-primary" id="open-add-course-modal-btn">
+            <i class="fa-solid fa-plus"></i>
+            <span>Add Course</span>
+          </button>
+          <button class="btn btn-secondary" id="refresh-courses-btn" title="Refresh Courses">
+            <i class="fa-solid fa-rotate"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="courses-grid" id="courses-container">
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Loading course catalog...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 2: Students & Gradebook -->
+    <section class="tab-panel" id="tab-students">
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <h2>Student Directory & Academic Records</h2>
+          <p>Manage student profiles, verify registration numbers, cumulative GPA, and enrolled curricula.</p>
+        </div>
+        <div class="panel-action-group">
+          <div class="search-input-wrapper">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="student-search-input" placeholder="Search student name or reg #...">
+          </div>
+          <button class="btn btn-primary" id="open-add-student-modal-btn">
+            <i class="fa-solid fa-user-plus"></i>
+            <span>Register Student</span>
+          </button>
+          <button class="btn btn-secondary" id="refresh-students-btn">
+            <i class="fa-solid fa-rotate"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-responsive">
+          <table class="data-table" id="students-table">
+            <thead>
+              <tr>
+                <th>Registration No</th>
+                <th>Full Name</th>
+                <th>Age</th>
+                <th>GPA</th>
+                <th>Enrollments</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="students-table-body">
+              <tr>
+                <td colspan="7" class="text-center py-4">Loading students directory...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 3: Enrollment Hub -->
+    <section class="tab-panel" id="tab-enrollments">
+      <div class="enrollment-layout">
+        <!-- New Enrollment Form -->
+        <div class="glass-card enrollment-card">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-user-check text-indigo"></i> Quick Course Enrollment</h3>
+            <p>Enroll a student into a designated course module with capacity validation.</p>
+          </div>
+          <form id="enrollment-form" class="form-grid">
+            <div class="form-group">
+              <label for="enroll-student-select">Select Student</label>
+              <select id="enroll-student-select" required>
+                <option value="">-- Choose Student --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="enroll-course-select">Select Course</label>
+              <select id="enroll-course-select" required>
+                <option value="">-- Choose Course --</option>
+              </select>
+            </div>
+            <div class="form-group full-width">
+              <button type="submit" class="btn btn-primary btn-block" id="submit-enroll-btn">
+                <i class="fa-solid fa-paper-plane"></i>
+                <span>Complete Enrollment</span>
+              </button>
+            </div>
+          </form>
+          <div id="enrollment-result-banner" class="alert-banner hidden"></div>
+        </div>
+
+        <!-- Real-time Activity Feed / Approvals -->
+        <div class="glass-card live-feed-card">
+          <div class="card-header flex-between">
+            <div>
+              <h3><i class="fa-solid fa-satellite-dish text-emerald"></i> Live Real-Time Feed</h3>
+              <p>Live SignalR event stream & instant approval triggers.</p>
+            </div>
+            <span class="badge badge-live"><span class="status-dot pulse-green"></span> Live Sync</span>
+          </div>
+          <div class="activity-feed" id="live-activity-feed">
+            <div class="feed-item system-item">
+              <div class="feed-icon"><i class="fa-solid fa-circle-nodes"></i></div>
+              <div class="feed-content">
+                <p class="feed-title">SignalR Hub Connected</p>
+                <span class="feed-time">Listening on /hubs/tms</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 4: Performance & Assessments -->
+    <section class="tab-panel" id="tab-assessments">
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <h2>Assessment Results & Automated Grading</h2>
+          <p>Evaluations evaluated with TMS Grading Engine (Distinction: &ge;70%, Pass: &ge;50%, Fail: &lt;50%).</p>
+        </div>
+        <div class="panel-action-group">
+          <button class="btn btn-primary" id="open-record-grade-modal-btn">
+            <i class="fa-solid fa-award"></i>
+            <span>Record Grade</span>
+          </button>
+          <button class="btn btn-secondary" id="refresh-grades-btn">
+            <i class="fa-solid fa-rotate"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-responsive">
+          <table class="data-table" id="grades-table">
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Course</th>
+                <th>Raw Score</th>
+                <th>Letter Grade</th>
+                <th>Evaluation</th>
+                <th>Date Graded</th>
+              </tr>
+            </thead>
+            <tbody id="grades-table-body">
+              <tr>
+                <td colspan="6" class="text-center py-4">Loading grade records...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 5: Async Transcripts & Certificates -->
+    <section class="tab-panel" id="tab-transcripts">
+      <div class="transcripts-grid">
+        <!-- Transcript Generator Box -->
+        <div class="glass-card">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-file-waveform text-indigo"></i> Async Transcript Generator</h3>
+            <p>Dispatches asynchronous background jobs via bounded channels with live polling & SignalR notification.</p>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="transcript-student-select">Target Student</label>
+              <select id="transcript-student-select" required>
+                <option value="">-- Choose Student --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="idempotency-key-input">Idempotency Key (Optional)</label>
+              <input type="text" id="idempotency-key-input" placeholder="e.g. KEY-2026-X99">
+            </div>
+            <div class="form-group full-width">
+              <button class="btn btn-primary btn-block" id="generate-transcript-btn">
+                <i class="fa-solid fa-gears"></i>
+                <span>Queue Transcript Generation</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="transcript-job-progress" class="job-progress-box hidden">
+            <div class="progress-header">
+              <span id="job-status-title">Generating Transcript...</span>
+              <span id="job-percent-badge" class="badge badge-warning">Processing</span>
+            </div>
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill" id="job-progress-fill" style="width: 25%;"></div>
+            </div>
+            <div class="progress-footer">
+              <span id="job-report-id">Report ID: --</span>
+              <a href="#" id="job-download-link" class="btn btn-sm btn-success hidden" target="_blank">
+                <i class="fa-solid fa-download"></i> Download Transcript
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Certificate Issuer Box -->
+        <div class="glass-card">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-certificate text-amber"></i> Resilient Certificate Issuer</h3>
+            <p>Interacts with external certificate authority through Polly Circuit Breaker, Exponential Retry & Timeout.</p>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="cert-student-select">Student</label>
+              <select id="cert-student-select" required>
+                <option value="">-- Select Student --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="cert-course-select">Course Code</label>
+              <select id="cert-course-select" required>
+                <option value="">-- Select Course --</option>
+              </select>
+            </div>
+            <div class="form-group full-width">
+              <button class="btn btn-accent btn-block" id="issue-cert-btn">
+                <i class="fa-solid fa-stamp"></i>
+                <span>Issue Official Certificate</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="cert-result-card" class="cert-result-box hidden">
+            <div class="cert-badge-glow"><i class="fa-solid fa-award"></i></div>
+            <h4 id="cert-serial-heading">CERT-2026-SUCCESS</h4>
+            <p id="cert-detail-text">Certificate issued and registered to academic ledger.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Issued Certificates Ledger -->
+      <div class="table-card mt-6">
+        <div class="card-header flex-between">
+          <h3><i class="fa-solid fa-stamp text-emerald"></i> Issued Certificates Ledger</h3>
+          <button class="btn btn-secondary btn-sm" id="refresh-certs-btn"><i class="fa-solid fa-rotate"></i> Refresh</button>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="certs-table">
+            <thead>
+              <tr>
+                <th>Serial Number</th>
+                <th>Student</th>
+                <th>Course</th>
+                <th>Issued Timestamp</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="certs-table-body">
+              <tr>
+                <td colspan="5" class="text-center py-4">Loading certificates...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 6: API Tester & Correlation Tracing -->
+    <section class="tab-panel" id="tab-tester">
+      <div class="tester-grid">
+        <div class="glass-card">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-network-wired text-cyan"></i> Live Endpoint Tester</h3>
+            <p>Execute live HTTP requests with automatic X-Correlation-ID tracing and response header inspections.</p>
+          </div>
+
+          <div class="tester-controls">
+            <div class="input-row">
+              <select id="tester-method" class="select-method">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="DELETE">DELETE</option>
+              </select>
+              <input type="text" id="tester-url" value="/api/v2/courses" placeholder="/api/v2/courses">
+              <button class="btn btn-primary" id="tester-send-btn">
+                <i class="fa-solid fa-paper-plane"></i> Send
+              </button>
+            </div>
+
+            <div class="preset-buttons">
+              <span class="preset-label">Quick Presets:</span>
+              <button class="btn-chip" data-method="GET" data-url="/api/v2/courses">Courses (v2)</button>
+              <button class="btn-chip" data-method="GET" data-url="/api/v1/courses">Courses (v1 Sunset)</button>
+              <button class="btn-chip" data-method="GET" data-url="/api/students">Students List</button>
+              <button class="btn-chip" data-method="GET" data-url="/api/assessments/results">Protected Results</button>
+              <button class="btn-chip" data-method="GET" data-url="/health/live">Live Health</button>
+              <button class="btn-chip" data-method="GET" data-url="/health/ready">Ready Health</button>
+            </div>
+
+            <div class="form-group mt-3" id="tester-body-group" style="display: none;">
+              <label for="tester-body">Request Body (JSON)</label>
+              <textarea id="tester-body" rows="4" placeholder='{ "code": "CS-500", "title": "AI & Deep Learning", "maxCapacity": 25 }'></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Response Viewer -->
+        <div class="glass-card">
+          <div class="card-header flex-between">
+            <h3><i class="fa-solid fa-code-compare text-emerald"></i> Response & Telemetry</h3>
+            <div class="response-meta" id="tester-response-meta">
+              <span class="badge badge-neutral" id="response-status-badge">Status: Idle</span>
+              <span class="badge badge-neutral" id="response-time-badge">Time: 0ms</span>
+            </div>
+          </div>
+          <div class="telemetry-bar" id="telemetry-bar">
+            <span><strong>X-Correlation-Id:</strong> <code id="meta-correlation-id">--</code></span>
+            <span><strong>Deprecation:</strong> <code id="meta-deprecation">--</code></span>
+          </div>
+          <pre class="code-viewer" id="tester-response-viewer">// Send a request to see output with real-time telemetry headers</pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Auth Modal (Sign In / Register) -->
+  <div class="modal-backdrop hidden" id="auth-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="auth-modal-title"><i class="fa-solid fa-shield-halved text-indigo"></i> TMS Authentication</h3>
+        <button class="btn-close" id="auth-modal-close-btn">&times;</button>
+      </div>
+      <div class="auth-tabs">
+        <button class="auth-tab-btn active" id="auth-tab-login">Login</button>
+        <button class="auth-tab-btn" id="auth-tab-register">Register</button>
+      </div>
+      <div class="modal-body">
+        <!-- Login Form -->
+        <form id="login-form">
+          <div class="quick-creds-banner">
+            <strong>Quick Demo Accounts:</strong>
+            <div class="quick-creds-buttons">
+              <button type="button" class="btn-chip" data-email="admin@tms.local" data-pass="Admin123456!#">Admin</button>
+              <button type="button" class="btn-chip" data-email="instructor@tms.local" data-pass="Instructor123456!#">Instructor</button>
+              <button type="button" class="btn-chip" data-email="student@tms.local" data-pass="Student123456!#">Student</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="login-email">Email Address</label>
+            <input type="email" id="login-email" required placeholder="admin@tms.local" value="admin@tms.local">
+          </div>
+          <div class="form-group">
+            <label for="login-password">Password</label>
+            <input type="password" id="login-password" required placeholder="Admin123456!#" value="Admin123456!#">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block" id="submit-login-btn">
+            <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In
+          </button>
+        </form>
+
+        <!-- Register Form -->
+        <form id="register-form" class="hidden">
+          <div class="form-group">
+            <label for="reg-name">First Name</label>
+            <input type="text" id="reg-name" required placeholder="Sara">
+          </div>
+          <div class="form-group">
+            <label for="reg-email">Email Address</label>
+            <input type="email" id="reg-email" required placeholder="sara@tms.local">
+          </div>
+          <div class="form-group">
+            <label for="reg-password">Password (min 8 chars, 1 uppercase, 1 digit)</label>
+            <input type="password" id="reg-password" required placeholder="Password123!">
+          </div>
+          <div class="form-group">
+            <label for="reg-role">Role</label>
+            <select id="reg-role">
+              <option value="Student">Student</option>
+              <option value="Instructor">Instructor</option>
+              <option value="Admin">Admin</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-accent btn-block" id="submit-register-btn">
+            <i class="fa-solid fa-user-plus"></i> Create Account
+          </button>
+        </form>
+
+        <div id="auth-alert" class="alert-banner hidden mt-3"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Course Modal -->
+  <div class="modal-backdrop hidden" id="add-course-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-book text-indigo"></i> Add New Course</h3>
+        <button class="btn-close" id="add-course-modal-close-btn">&times;</button>
+      </div>
+      <form id="add-course-form" class="modal-body form-grid">
+        <div class="form-group">
+          <label for="new-course-code">Course Code</label>
+          <input type="text" id="new-course-code" required placeholder="e.g. CS-501">
+        </div>
+        <div class="form-group">
+          <label for="new-course-capacity">Max Capacity</label>
+          <input type="number" id="new-course-capacity" required min="1" max="100" value="30">
+        </div>
+        <div class="form-group full-width">
+          <label for="new-course-title">Course Title</label>
+          <input type="text" id="new-course-title" required placeholder="e.g. Machine Learning & Intelligent Agents">
+        </div>
+        <div class="form-group full-width">
+          <button type="submit" class="btn btn-primary btn-block">Save Course</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Student Modal -->
+  <div class="modal-backdrop hidden" id="add-student-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-user-plus text-emerald"></i> Register Student</h3>
+        <button class="btn-close" id="add-student-modal-close-btn">&times;</button>
+      </div>
+      <form id="add-student-form" class="modal-body form-grid">
+        <div class="form-group">
+          <label for="new-student-reg">Registration Number</label>
+          <input type="text" id="new-student-reg" required placeholder="TMS-2026-0006">
+        </div>
+        <div class="form-group">
+          <label for="new-student-age">Age</label>
+          <input type="number" id="new-student-age" required min="16" max="90" value="21">
+        </div>
+        <div class="form-group full-width">
+          <label for="new-student-name">Full Name</label>
+          <input type="text" id="new-student-name" required placeholder="e.g. Maya Lin">
+        </div>
+        <div class="form-group full-width">
+          <button type="submit" class="btn btn-primary btn-block">Register Student</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Record Grade Modal -->
+  <div class="modal-backdrop hidden" id="record-grade-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-award text-amber"></i> Record Assessment Grade</h3>
+        <button class="btn-close" id="record-grade-modal-close-btn">&times;</button>
+      </div>
+      <form id="record-grade-form" class="modal-body form-grid">
+        <div class="form-group">
+          <label for="grade-student-select">Student</label>
+          <select id="grade-student-select" required></select>
+        </div>
+        <div class="form-group">
+          <label for="grade-course-select">Course</label>
+          <select id="grade-course-select" required></select>
+        </div>
+        <div class="form-group full-width">
+          <label for="grade-score-input">Score (0 - 100)</label>
+          <input type="number" id="grade-score-input" required min="0" max="100" step="0.5" placeholder="85.5">
+        </div>
+        <div class="form-group full-width">
+          <button type="submit" class="btn btn-primary btn-block">Submit Grade</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Application Logic -->
+  <script src="/js/app.js"></script>
+</body>
+</html>

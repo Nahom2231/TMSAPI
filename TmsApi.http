@@ -1,6 +1,85 @@
-@TmsApi_HostAddress = http://localhost:5029
+PUT http://localhost:5029/api/courses/1
+Content-Type: application/json
 
-GET {{TmsApi_HostAddress}}/weatherforecast/
-Accept: application/json
+{
+  "id": 1,
+  "code": "CS-101",
+  "title": "Updated Title",
+  "maxCapacity": 30,
+  "enrollmentCount": 2,
+  "links": []
+}
+###
+POST http://localhost:5029/api/v2/transcripts?api-version=2.0
+Content-Type: application/json
+Idempotency-Key: 11111111-2222-3333-4444-555555555555
+
+{
+  "studentId": 1
+}
+###
+POST http://localhost:5029/api/v2/transcripts?api-version=2.0
+Content-Type: application/json
+Idempotency-Key: 777777777-22222-444444-33333333333
+
+{
+  "studentId": 1
+}
+###
+
+GET http://localhost:5029/api/v2/transcripts/c641532c3d7a/status?api-version=2.0
+###
+POST http://localhost:5029/api/v2/transcripts?api-version=2.0
+Content-Type: application/json
+Idempotency-Key: TRIGGER-NOW-100
+
+{
+  "studentId": 1
+}
+
 
 ###
+POST http://localhost:5029/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "leul.Instructor@cotbe.edu.et",
+  "password": "WrongPassword123"
+
+}
+###
+
+POST  http://localhost:5029/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "leul.instructor@cotbe.edu.et",
+  "password": "Password123!"
+}
+###
+
+POST http://localhost:5029/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "dev.test@cotbe.edu.et",
+  "password": "Password123!#",
+  "firstName": "Sara"
+}
+
+###
+POST http://localhost:5029/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "dev.test@cotbe.edu.et",
+  "password": "Password123!#"
+}
+
+### Test Token Refresh
+POST http://localhost:5029/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "f24684ec8b834000a92e7bec3d534718"
+}

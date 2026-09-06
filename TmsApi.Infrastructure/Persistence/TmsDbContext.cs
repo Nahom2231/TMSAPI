@@ -1,0 +1,51 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using TmsApi.Domain.Entities;
+using TmsApi.Application.Common;
+using TmsApi.Infrastructure.Persistence;
+namespace TmsApi.Infrastructure.Persistence;
+
+public class TmsDbContext : IdentityDbContext<TmsUser> , ITmsDbContext
+{
+
+    public TmsDbContext(DbContextOptions<TmsDbContext> options ):  base(options) {}
+    public DbSet<Student> Students => Set<Student>();
+  public DbSet<Course> Courses => Set<Course>();
+    public DbSet<Enrollment> Enrollments => Set<Enrollment>();
+
+    public DbSet<Assessment> Assessments=> Set<Assessment>();
+    public DbSet<Certificate> Certificates =>Set <Certificate>();
+
+    public DbSet<RefreshToken> RefreshTokens {get; set;}
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(TmsDbContext).Assembly);
+
+        modelBuilder.Entity<Student>()
+        .Property<DateTime>("LastUpdated");
+
+        modelBuilder.Entity<Student>().Property(s=> s.Version)
+        .IsRowVersion();
+        modelBuilder.Entity<Student>()
+        .HasQueryFilter(s => !s.IsDeleted);
+    }
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+
+    {
+        var entries = ChangeTracker.Entries()
+            .Where(e => e.State is EntityState.Added or EntityState.Modified);
+        foreach (var entry in entries)
+        {
+            if (entry.Entity is Student)
+            {
+                entry.Property("LastUpdated").CurrentValue = DateTime.UtcNow;
+            }
+        }
+
+        return base.SaveChangesAsync(cancellationToken);
+    }
+}
+
